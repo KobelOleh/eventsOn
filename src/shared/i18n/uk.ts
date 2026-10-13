@@ -53,6 +53,7 @@ export const uk = {
       dateRequired: "Вкажіть коректні дату й час.",
       importanceInvalid: "Оберіть важливість зі списку.",
       rangeInvalid: "Некоректний діапазон дат.",
+      cursorInvalid: "Некоректна позиція у списку.",
     },
   },
   // Editing and deleting an Event (ticket 05)
@@ -69,5 +70,16 @@ export const uk = {
   },
   list: {
     showMore: "Показати ще",
+    label: "Список подій",
+    loading: "Завантаження подій…",
+    empty:
+      "У вас ще немає подій. Додайте першу в календарі, натиснувши на потрібний день.",
+    loadFailed: "Не вдалося завантажити список подій. Спробуйте ще раз.",
+    retry: "Спробувати ще раз",
+  },
+  views: {
+    label: "Вигляд",
+    calendar: "Календар",
+    list: "Список",
   },
 } as const;

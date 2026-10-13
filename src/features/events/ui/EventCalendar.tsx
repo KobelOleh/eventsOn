@@ -5,6 +5,7 @@ import Box from "@mui/material/Box";
 import FullCalendar, {
   type CalendarRef,
   type DateClickInfo,
+  type DatesSetInfo,
   type EventClickInfo,
   type EventInput,
   type EventSourceFuncInfo,
@@ -13,7 +14,7 @@ import dayGridPlugin from "@fullcalendar/react/daygrid";
 import interactionPlugin from "@fullcalendar/react/interaction";
 import ukLocale from "@fullcalendar/react/locales/uk";
 import classicThemePlugin from "@fullcalendar/react/themes/classic";
-import { useCallback, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { uk } from "@/shared/i18n/uk";
 import {
   createEvent,
@@ -62,15 +63,34 @@ type DialogState = {
   confirmingDelete?: boolean;
 } | null;
 
-const subscribeNothing = () => () => {};
+type CalendarProps = {
+  /** "yyyy-mm-dd" to open on (from the URL); defaults to today. */
+  initialDate?: string;
+  /** Reports the first day of the month shown after navigating. */
+  onDateChange?: (date: string) => void;
+};
 
 /** Month calendar of the Owner's Events with a create dialog. */
-export function EventCalendar() {
-  const isClient = useSyncExternalStore(
-    subscribeNothing,
-    () => true,
-    () => false
+export function EventCalendar({ initialDate, onDateChange }: CalendarProps) {
+  const shownMonth = useRef(
+    (initialDate ?? toLocalParts(new Date().toISOString()).date).slice(0, 7)
   );
+  const handleDatesSet = useCallback(
+    (info: DatesSetInfo) => {
+      const { date } = toLocalParts(info.view.currentStart.toISOString());
+      if (date.slice(0, 7) === shownMonth.current) return;
+      shownMonth.current = date.slice(0, 7);
+      onDateChange?.(date);
+    },
+    [onDateChange]
+  );
+  // FullCalendar renders only after this component has committed: it starts
+  // fetching during its own render and the fetch updates our state.
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => {
+    const id = setTimeout(() => setIsClient(true), 0);
+    return () => clearTimeout(id);
+  }, []);
   const calendarRef = useRef<CalendarRef>(null);
   // Server Actions run one at a time; only the newest request may win.
   const latestRequest = useRef(0);
@@ -140,6 +160,8 @@ export function EventCalendar() {
           plugins={plugins}
           locale={ukLocale}
           initialView="dayGridMonth"
+          initialDate={initialDate}
+          datesSet={handleDatesSet}
           headerToolbar={{ start: "title", end: "today prev,next" }}
           height="auto"
           events={loadEvents}

@@ -11,6 +11,7 @@ import { uk } from "@/shared/i18n/uk";
 import {
   createEvent,
   deleteEvent,
+  listEvents,
   listEventsInRange,
   updateEvent,
 } from "../actions";
@@ -147,6 +148,145 @@ describe("events Server Actions", () => {
           error: { code: "VALIDATION" },
         });
       }
+    });
+  });
+
+  describe("listEvents (List view, cursor pagination)", () => {
+    const PAGE = 20;
+
+    /** Seeds Events straight into the table so timestamps are controlled. */
+    async function seed(owner: string, count: number, at: (i: number) => Date) {
+      await prisma.event.createMany({
+        data: Array.from({ length: count }, (_, i) => ({
+          ownerId: owner,
+          title: `e${String(i).padStart(3, "0")}`,
+          startsAt: at(i),
+        })),
+      });
+    }
+
+    const minute = (i: number) => new Date(Date.UTC(2026, 9, 1, 0, i));
+
+    /** Follows nextCursor to the end; returns every page's items. */
+    async function readAllPages() {
+      const pages: { id: string; startsAt: string }[][] = [];
+      let cursor: string | undefined;
+      for (let guard = 0; guard < 50; guard++) {
+        const result = await listEvents({ cursor });
+        if (!result.ok) throw new Error("page failed");
+        pages.push(result.data.items);
+        if (result.data.nextCursor === null) return pages;
+        cursor = result.data.nextCursor;
+      }
+      throw new Error("pagination did not terminate");
+    }
+
+    it("returns an empty list and no cursor when there are no Events", async () => {
+      expect(await listEvents({})).toEqual({
+        ok: true,
+        data: { items: [], nextCursor: null },
+      });
+    });
+
+    it("returns the first 20 Events by start time and a cursor for the rest", async () => {
+      // Inserted in reverse so ordering cannot be insertion order.
+      await seed(userA, 25, (i) => minute(24 - i));
+      const result = await listEvents({});
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.data.items).toHaveLength(PAGE);
+      const times = result.data.items.map((e) => e.startsAt);
+      expect(times).toEqual([...times].sort());
+      expect(times[0]).toBe(minute(0).toISOString());
+      expect(typeof result.data.nextCursor).toBe("string");
+    });
+
+    it("has no cursor when the Events exactly fill one page", async () => {
+      await seed(userA, PAGE, minute);
+      const result = await listEvents({});
+      expect(result.ok && result.data.nextCursor).toBeNull();
+      expect(result.ok && result.data.items).toHaveLength(PAGE);
+    });
+
+    it("pages through 45 Events with no duplicates or gaps and ends cleanly", async () => {
+      await seed(userA, 45, minute);
+      const pages = await readAllPages();
+      expect(pages.map((p) => p.length)).toEqual([20, 20, 5]);
+      expect(pages.flat().map((e) => e.startsAt)).toEqual(
+        Array.from({ length: 45 }, (_, i) => minute(i).toISOString())
+      );
+    });
+
+    it("pages stably across Events sharing one start time, across a page boundary", async () => {
+      const same = new Date(Date.UTC(2026, 9, 5, 12));
+      await seed(userA, 30, () => same);
+      await seed(userA, 1, () => new Date(Date.UTC(2026, 9, 1)));
+      await seed(userA, 1, () => new Date(Date.UTC(2026, 9, 9)));
+
+      const pages = await readAllPages();
+      const ids = pages.flat().map((e) => e.id);
+      expect(ids).toHaveLength(32);
+      expect(new Set(ids).size).toBe(32);
+
+      const all = await prisma.event.findMany({
+        where: { ownerId: userA },
+        select: { id: true },
+      });
+      expect(new Set(ids)).toEqual(new Set(all.map((e) => e.id)));
+      // Ties are broken by id, ascending.
+      const tied = pages
+        .flat()
+        .filter((e) => e.startsAt === same.toISOString());
+      expect(tied.map((e) => e.id)).toEqual(tied.map((e) => e.id).sort());
+    });
+
+    it("includes an Event created between page loads that sorts after the cursor", async () => {
+      await seed(userA, 25, minute);
+      const first = await listEvents({});
+      if (!first.ok) throw new Error("page failed");
+      await createEvent({ ...valid, startsAt: "2030-01-01T00:00:00.000Z" });
+      const second = await listEvents({ cursor: first.data.nextCursor });
+      expect(second.ok && second.data.items).toHaveLength(6);
+    });
+
+    it("rejects a malformed cursor", async () => {
+      for (const cursor of ["!!!", "bm90LWpzb24", 42, ""]) {
+        expect(await listEvents({ cursor })).toMatchObject({
+          ok: false,
+          error: { code: "VALIDATION" },
+        });
+      }
+    });
+
+    it("never lists or pages through another Owner's Events", async () => {
+      await seed(userA, 25, minute);
+      await seed(userB, 3, (i) => minute(100 + i));
+
+      signInAs(userB);
+      const own = await listEvents({});
+      expect(own.ok && own.data.items).toHaveLength(3);
+      expect(own.ok && own.data.nextCursor).toBeNull();
+
+      // A cursor minted for A is only a position; B still sees only B's Events.
+      signInAs(userA);
+      const aFirst = await listEvents({});
+      if (!aFirst.ok) throw new Error("page failed");
+      signInAs(userB);
+      const viaCursor = await listEvents({ cursor: aFirst.data.nextCursor });
+      const bIds = new Set(
+        (await prisma.event.findMany({ where: { ownerId: userB } })).map(
+          (e) => e.id
+        )
+      );
+      expect(viaCursor.ok && viaCursor.data.items.length).toBeGreaterThan(0);
+      expect(
+        viaCursor.ok && viaCursor.data.items.every((e) => bIds.has(e.id))
+      ).toBe(true);
+    });
+
+    it("rejects an anonymous caller", async () => {
+      vi.mocked(requireOwnerId).mockRejectedValue(new Error("UNAUTHORIZED"));
+      await expect(listEvents({})).rejects.toThrow("UNAUTHORIZED");
     });
   });
 
