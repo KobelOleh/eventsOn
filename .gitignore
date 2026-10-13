@@ -10,3 +10,6 @@ next-env.d.ts
 src/generated/
 .vercel
 .DS_Store
+
+# JetBrains
+.idea/
