@@ -1,7 +1,7 @@
 // The Owner's Filter (Importance levels + Keyword search) as read from and
 // written to the URL. Pure and client-safe: no Next, no server code.
 
-import { IMPORTANCES, MAX_SEARCH_LENGTH, type Importance } from "./schemas";
+import { IMPORTANCES, MAX_SEARCH_LENGTH, type Importance } from "./constants";
 
 /** Same shape the list and range actions accept. */
 export type EventFilterState = { importance: Importance[]; q: string };

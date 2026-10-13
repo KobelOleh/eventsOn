@@ -11,8 +11,8 @@ import {
   listQuerySchema,
   PAGE_SIZE,
   rangeSchema,
-  type Importance,
 } from "./schemas";
+import type { Importance } from "./constants";
 
 /** One List view page; `nextCursor` is null at the end of the list. */
 export type EventPage = { items: EventDto[]; nextCursor: string | null };

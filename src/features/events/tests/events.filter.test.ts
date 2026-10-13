@@ -107,6 +107,16 @@ describe("filter and search (events Server Actions)", () => {
       ]);
     });
 
+    it("matches events containing every word, in any order and field", async () => {
+      await seed("Team meeting");
+      await seed("Weekly sync", "NORMAL", "meeting with the team");
+      await seed("Team lunch");
+      await seed("Meeting notes");
+      const expected = ["Team meeting", "Weekly sync"];
+      expect(await rangeTitles({ q: "meeting team" })).toEqual(expected);
+      expect(await listTitles({ q: "  TEAM   meeting " })).toEqual(expected);
+    });
+
     it("ignores case for Cyrillic", async () => {
       await seed("Зустріч з ЛІКАРЕМ");
       await seed("Лікар", "NORMAL", "щось");

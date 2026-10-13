@@ -1,6 +1,7 @@
 import { prisma } from "@/shared/db";
 import type { Prisma } from "@/generated/prisma/client";
-import type { EventFilter, Importance } from "./schemas";
+import type { Importance } from "./constants";
+import type { EventFilter } from "./schemas";
 
 export type EventRecord = {
   id: string;
@@ -30,18 +31,29 @@ const select = {
  *  LIKE escape character is the backslash). */
 const escapeLike = (text: string) => text.replace(/[\\%_]/g, "\\$&");
 
+/** Keyword search: every whitespace-separated word must appear (any order,
+ *  case-insensitive) in the title or the description. */
+function searchWhere(q: string): Prisma.EventWhereInput[] {
+  return q
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => {
+      const text = escapeLike(word);
+      return {
+        OR: [
+          { title: { contains: text, mode: "insensitive" } },
+          { description: { contains: text, mode: "insensitive" } },
+        ],
+      };
+    });
+}
+
 function filterWhere(filter: EventFilter): Prisma.EventWhereInput {
-  const q = filter.q === undefined ? undefined : escapeLike(filter.q);
   return {
     ...(filter.importance.length > 0 && {
       importance: { in: filter.importance },
     }),
-    ...(q && {
-      OR: [
-        { title: { contains: q, mode: "insensitive" } },
-        { description: { contains: q, mode: "insensitive" } },
-      ],
-    }),
+    ...(filter.q && { AND: searchWhere(filter.q) }),
   };
 }
 

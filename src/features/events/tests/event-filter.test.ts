@@ -6,7 +6,7 @@ import {
   UNFILTERED,
   writeFilter,
 } from "../lib/event-filter";
-import { MAX_SEARCH_LENGTH } from "../lib/schemas";
+import { MAX_SEARCH_LENGTH } from "../lib/constants";
 
 describe("parseFilter", () => {
   it("reads no params as Unfiltered", () => {

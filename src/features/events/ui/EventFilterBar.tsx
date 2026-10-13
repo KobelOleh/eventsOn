@@ -13,7 +13,7 @@ import {
   IMPORTANCES,
   MAX_SEARCH_LENGTH,
   type Importance,
-} from "../lib/schemas";
+} from "../lib/constants";
 import { isNarrowing, type EventFilterState } from "../lib/event-filter";
 import { presentationOf } from "./importance";
 

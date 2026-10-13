@@ -14,7 +14,7 @@ import { uk } from "@/shared/i18n/uk";
 import type { Result } from "@/shared/result";
 import { fromLocalParts } from "../lib/datetime";
 import type { EventDto } from "../lib/event-service";
-import { IMPORTANCES, type Importance } from "../lib/schemas";
+import { IMPORTANCES, type Importance } from "../lib/constants";
 import { presentationOf } from "./importance";
 
 /** What the user edits; date and time are browser-local input values. */

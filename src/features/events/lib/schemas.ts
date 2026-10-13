@@ -1,17 +1,15 @@
 import { z } from "zod";
 import { uk } from "@/shared/i18n/uk";
+import { IMPORTANCES, MAX_SEARCH_LENGTH } from "./constants";
 
 const e = uk.events.errors;
-
-export const IMPORTANCES = ["NORMAL", "IMPORTANT", "CRITICAL"] as const;
-export type Importance = (typeof IMPORTANCES)[number];
 
 /** An absolute instant with an explicit offset ("Z" or "+03:00"). */
 const instant = (message: string) =>
   z.iso.datetime({ offset: true, error: message });
 
 /**
- * Fields shared by create and (later) edit. Unknown keys such as an
+ * Fields shared by create and edit. Unknown keys such as an
  * `ownerId` are stripped: the Owner comes only from the session.
  */
 export const eventFieldsSchema = z.object({
@@ -65,9 +63,6 @@ function decodeCursor(raw: string): Cursor | null {
     return null;
   }
 }
-
-/** Longest search text accepted. */
-export const MAX_SEARCH_LENGTH = 200;
 
 /**
  * Filter and search shared by the Calendar range query and the List query.

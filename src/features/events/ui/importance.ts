@@ -1,5 +1,5 @@
 import { uk } from "@/shared/i18n/uk";
-import type { Importance } from "../lib/schemas";
+import type { Importance } from "../lib/constants";
 
 export type ImportancePresentation = {
   label: string;

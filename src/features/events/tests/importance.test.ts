@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { uk } from "@/shared/i18n/uk";
-import { IMPORTANCES } from "../lib/schemas";
+import { IMPORTANCES } from "../lib/constants";
 import { presentationOf } from "../ui/importance";
 
 function luminance(hex: string) {
