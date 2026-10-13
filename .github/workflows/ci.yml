@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: eventson
+          POSTGRES_PASSWORD: eventson
+          POSTGRES_DB: eventson_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U eventson -d eventson_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Throwaway values for CI only; real secrets are never committed.
+      DATABASE_URL: postgresql://eventson:eventson@localhost:5432/eventson_test
+      TEST_DATABASE_URL: postgresql://eventson:eventson@localhost:5432/eventson_test
+      AUTH_SECRET: ci-only-secret-0123456789abcdef0123
+      AUTH_GOOGLE_ID: ci-google-id
+      AUTH_GOOGLE_SECRET: ci-google-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run boundaries
+      - run: npm test
