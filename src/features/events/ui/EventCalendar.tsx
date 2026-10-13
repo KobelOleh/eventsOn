@@ -20,11 +20,16 @@ import timeGridPlugin from "@fullcalendar/react/timegrid";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { uk } from "@/shared/i18n/uk";
 import { listEventsInRange } from "../actions";
-import { clickedDateParts, DEFAULT_TIME, toLocalParts } from "../lib/datetime";
+import { clickedDateParts, toLocalParts } from "../lib/datetime";
 import type { EventDto } from "../lib/event-service";
 import type { CalendarMode, EventFilterState } from "../lib/view-state";
-import type { EventFormValues } from "./EventDialog";
-import { EventDialogs, editingDialog, type DialogState } from "./EventDialogs";
+import { useRegisterCreateEvent } from "./create-event";
+import {
+  creatingDialog,
+  editingDialog,
+  EventDialogs,
+  type DialogState,
+} from "./EventDialogs";
 import { deriveFilterKeys, toFilterQuery } from "./filter-keys";
 import { IMPORTANCE_COLORS, IMPORTANCE_TEXT_COLOR } from "./importance";
 import "@fullcalendar/react/skeleton.css";
@@ -54,10 +59,6 @@ function toCalendarEvent(event: EventDto): EventInput {
     color,
     contrastColor: IMPORTANCE_TEXT_COLOR,
   };
-}
-
-function emptyForm(date: string, time = DEFAULT_TIME): EventFormValues {
-  return { title: "", description: "", date, time, importance: "NORMAL" };
 }
 
 type CalendarProps = {
@@ -165,8 +166,15 @@ export function EventCalendar({
   const handleDateClick = useCallback((info: DateClickInfo) => {
     dialogCount.current += 1;
     const { date, time } = clickedDateParts(info.dateStr);
-    setDialog({ key: dialogCount.current, values: emptyForm(date, time) });
+    setDialog(creatingDialog(dialogCount.current, date, time));
   }, []);
+
+  useRegisterCreateEvent(
+    useCallback(() => {
+      dialogCount.current += 1;
+      setDialog(creatingDialog(dialogCount.current));
+    }, [])
+  );
 
   const handleEventClick = useCallback((info: EventClickInfo) => {
     dialogCount.current += 1;

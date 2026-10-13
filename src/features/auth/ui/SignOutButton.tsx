@@ -5,7 +5,7 @@ import { signOutAction } from "../actions";
 export function SignOutButton() {
   return (
     <form action={signOutAction}>
-      <Button type="submit" variant="outlined">
+      <Button type="submit" size="small" variant="outlined">
         {uk.auth.signOut}
       </Button>
     </form>

@@ -12,7 +12,13 @@ import { uk } from "@/shared/i18n/uk";
 import { listEvents } from "../actions";
 import type { EventDto } from "../lib/event-service";
 import type { EventFilterState } from "../lib/view-state";
-import { EventDialogs, editingDialog, type DialogState } from "./EventDialogs";
+import { useRegisterCreateEvent } from "./create-event";
+import {
+  creatingDialog,
+  editingDialog,
+  EventDialogs,
+  type DialogState,
+} from "./EventDialogs";
 import { deriveFilterKeys, toFilterQuery } from "./filter-keys";
 import { EventListItem } from "./EventListItem";
 
@@ -86,6 +92,13 @@ export function EventList({ filter }: Props) {
     setLoadingMore(false);
   };
 
+  useRegisterCreateEvent(
+    useCallback(() => {
+      dialogCount.current += 1;
+      setDialog(creatingDialog(dialogCount.current));
+    }, [])
+  );
+
   const dialogs = (
     <EventDialogs
       dialog={dialog}
@@ -96,37 +109,46 @@ export function EventList({ filter }: Props) {
 
   if (loading) {
     return (
-      <Box
-        role="status"
-        aria-label={uk.list.loading}
-        sx={{ display: "flex", alignItems: "center", gap: 2, py: 4 }}
-      >
-        <CircularProgress size={24} />
-        <Typography color="text.secondary">{uk.list.loading}</Typography>
-      </Box>
+      <>
+        <Box
+          role="status"
+          aria-label={uk.list.loading}
+          sx={{ display: "flex", alignItems: "center", gap: 2, py: 4 }}
+        >
+          <CircularProgress size={24} />
+          <Typography color="text.secondary">{uk.list.loading}</Typography>
+        </Box>
+        {dialogs}
+      </>
     );
   }
 
   if (items.length === 0 && failed) {
     return (
-      <Alert
-        severity="error"
-        action={
-          <Button onClick={() => void reload(true)}>{uk.list.retry}</Button>
-        }
-      >
-        {uk.list.loadFailed}
-      </Alert>
+      <>
+        <Alert
+          severity="error"
+          action={
+            <Button onClick={() => void reload(true)}>{uk.list.retry}</Button>
+          }
+        >
+          {uk.list.loadFailed}
+        </Alert>
+        {dialogs}
+      </>
     );
   }
 
   if (items.length === 0) {
     return (
-      <Paper variant="outlined" sx={{ p: 4, textAlign: "center" }}>
-        <Typography color="text.secondary">
-          {isFiltered ? uk.filters.noMatches : uk.list.empty}
-        </Typography>
-      </Paper>
+      <>
+        <Paper variant="outlined" sx={{ p: 4, textAlign: "center" }}>
+          <Typography color="text.secondary">
+            {isFiltered ? uk.filters.noMatches : uk.list.empty}
+          </Typography>
+        </Paper>
+        {dialogs}
+      </>
     );
   }
 

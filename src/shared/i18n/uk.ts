@@ -19,6 +19,11 @@ export const uk = {
     register: "Зареєструватися",
     signOut: "Вийти",
     signInWithGoogle: "Увійти через Google",
+    or: "або",
+    loginSubtitle: "Увійдіть, щоб побачити свої події.",
+    registerSubtitle: "Створіть обліковий запис, щоб почати планувати.",
+    emailPlaceholder: "name@example.com",
+    passwordPlaceholder: "Щонайменше 8 символів",
     toRegister: "Немає облікового запису? Зареєструватися",
     toLogin: "Вже є обліковий запис? Увійти",
     errors: {
@@ -98,5 +103,18 @@ export const uk = {
     label: "Вигляд",
     calendar: "Календар",
     list: "Список",
+  },
+  home: {
+    subtitle: "Усе, що заплановано, у спокійному вигляді.",
+    greeting: "Привіт",
+  },
+  ui: {
+    create: "Створити",
+    themeMode: {
+      label: "Тема оформлення",
+      light: "Світла",
+      dark: "Темна",
+      system: "Як у системі",
+    },
   },
 } as const;

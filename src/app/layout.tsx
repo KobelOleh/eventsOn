@@ -1,3 +1,4 @@
+import InitColorSchemeScript from "@mui/material/InitColorSchemeScript";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { uk } from "@/shared/i18n/uk";
@@ -10,8 +11,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="uk">
+    // The init script sets the colour scheme before first paint, so the
+    // attribute legitimately differs between server and client HTML.
+    <html lang="uk" suppressHydrationWarning>
       <body>
+        <InitColorSchemeScript attribute="data" defaultMode="system" />
         <Providers>{children}</Providers>
       </body>
     </html>

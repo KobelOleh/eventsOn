@@ -24,6 +24,10 @@ npm run dev                  # http://localhost:3000
 
 `docker compose up` creates two databases in one container: `eventson` (development) and `eventson_test` (used by the test suite, so tests never touch dev data). The container uses a named volume; `docker compose down -v` wipes it. If port 5432 is already taken, change the host port in `docker-compose.yml` and in both URLs in `.env`.
 
+On Windows, port 3000 can fall into a range reserved by the system (`netsh interface ipv4 show excludedportrange protocol=tcp`). Then run `npm run dev -- -p 3100` and use `http://localhost:3100` (also in the Google redirect URI below, and in `AUTH_URL` if you set it).
+
+The UI follows the system light/dark theme; the header toggle (also on the login and register pages) overrides it.
+
 ### Environment variables
 
 Copy `.env.example` to `.env` and fill in:

@@ -63,6 +63,26 @@ export function EventFilterBar({ value, onChange }: Props) {
         onChange={(_, next: Importance[]) =>
           onChange({ importance: IMPORTANCES.filter((l) => next.includes(l)) })
         }
+        // Separate pill chips rather than one segmented control.
+        sx={{
+          backgroundColor: "transparent",
+          p: 0,
+          gap: 1,
+          flexWrap: "wrap",
+          "& .MuiToggleButton-root": {
+            border: 1,
+            borderStyle: "solid",
+            borderColor: "divider",
+            bgcolor: "background.paper",
+            py: 0.25,
+            "&.Mui-selected, &.Mui-selected:hover": {
+              bgcolor: "rgba(var(--mui-palette-primary-mainChannel) / 0.16)",
+              color: "text.primary",
+              borderColor: "primary.main",
+              boxShadow: "none",
+            },
+          },
+        }}
       >
         {IMPORTANCES.map((level) => (
           <ToggleButton key={level} value={level} sx={{ gap: 1 }}>
@@ -104,7 +124,12 @@ export function EventFilterBar({ value, onChange }: Props) {
             ) : undefined,
           },
         }}
-        sx={{ minWidth: 260, flexGrow: 1, maxWidth: 420 }}
+        sx={{
+          minWidth: 260,
+          flexGrow: 1,
+          maxWidth: 420,
+          "& .MuiOutlinedInput-root": { borderRadius: 999 },
+        }}
       />
       {filtered && (
         <Button

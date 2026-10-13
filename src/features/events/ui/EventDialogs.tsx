@@ -1,7 +1,7 @@
 "use client";
 
 import { createEvent, deleteEvent, updateEvent } from "../actions";
-import { toLocalParts } from "../lib/datetime";
+import { DEFAULT_TIME, toLocalParts } from "../lib/datetime";
 import type { EventDto } from "../lib/event-service";
 import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
 import { EventDialog, type EventFormValues } from "./EventDialog";
@@ -14,6 +14,19 @@ export type DialogState = {
   editing?: EventDto;
   confirmingDelete?: boolean;
 } | null;
+
+/** Dialog state for a new Event on `date` ("yyyy-mm-dd", default today) at
+ *  `time` (default 09:00). */
+export function creatingDialog(
+  key: number,
+  date: string = toLocalParts(new Date().toISOString()).date,
+  time: string = DEFAULT_TIME
+): DialogState {
+  return {
+    key,
+    values: { title: "", description: "", date, time, importance: "NORMAL" },
+  };
+}
 
 /** Dialog state for editing `event` (`key` must be fresh per opening). */
 export function editingDialog(event: EventDto, key: number): DialogState {
