@@ -6,10 +6,14 @@ import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useMemo } from "react";
 import { uk } from "@/shared/i18n/uk";
+import { toLocalParts } from "../lib/datetime";
 import {
+  dateForModeSwitch,
+  MODES,
   parseViewState,
   VIEWS,
   withViewState,
+  type CalendarMode,
   type EventFilterState,
   type ViewState,
 } from "../lib/view-state";
@@ -22,7 +26,7 @@ import { EventList } from "./EventList";
 export function EventsWorkspace() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { view, date, importance, q } = parseViewState(searchParams);
+  const { view, mode, date, importance, q } = parseViewState(searchParams);
   const importanceKey = importance.join(",");
   const filter = useMemo(
     () => ({ importance: importanceKey ? importanceKey.split(",") : [], q }),
@@ -51,26 +55,54 @@ export function EventsWorkspace() {
 
   return (
     <Box>
-      <ToggleButtonGroup
-        exclusive
-        size="small"
-        value={view}
-        aria-label={uk.views.label}
-        onChange={(_, next: ViewState["view"] | null) => {
-          if (next) update({ view: next }, "push");
-        }}
-        sx={{ mb: 2 }}
-      >
-        {VIEWS.map((v) => (
-          <ToggleButton key={v} value={v}>
-            {uk.views[v]}
-          </ToggleButton>
-        ))}
-      </ToggleButtonGroup>
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 2 }}>
+        <ToggleButtonGroup
+          exclusive
+          size="small"
+          value={view}
+          aria-label={uk.views.label}
+          onChange={(_, next: ViewState["view"] | null) => {
+            if (next) update({ view: next }, "push");
+          }}
+        >
+          {VIEWS.map((v) => (
+            <ToggleButton key={v} value={v}>
+              {uk.views[v]}
+            </ToggleButton>
+          ))}
+        </ToggleButtonGroup>
+        {view === "calendar" && (
+          <ToggleButtonGroup
+            exclusive
+            size="small"
+            value={mode}
+            aria-label={uk.modes.label}
+            onChange={(_, next: CalendarMode | null) => {
+              if (!next) return;
+              // Leaving the month grid: land on today rather than the 1st.
+              const anchor =
+                mode === "month" && next !== "month"
+                  ? dateForModeSwitch(
+                      date,
+                      toLocalParts(new Date().toISOString()).date
+                    )
+                  : date;
+              update({ mode: next, date: anchor }, "push");
+            }}
+          >
+            {MODES.map((m) => (
+              <ToggleButton key={m} value={m}>
+                {uk.modes[m]}
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
+        )}
+      </Box>
       <EventFilterBar value={filter} onChange={changeFilter} />
       {view === "calendar" ? (
         <EventCalendar
           initialDate={date ?? undefined}
+          mode={mode}
           onDateChange={(next) => update({ date: next }, "replace")}
           filter={filter}
         />

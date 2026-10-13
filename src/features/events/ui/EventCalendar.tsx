@@ -2,6 +2,8 @@
 
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import LinearProgress from "@mui/material/LinearProgress";
+import Typography from "@mui/material/Typography";
 import FullCalendar, {
   type CalendarRef,
   type DateClickInfo,
@@ -14,12 +16,13 @@ import dayGridPlugin from "@fullcalendar/react/daygrid";
 import interactionPlugin from "@fullcalendar/react/interaction";
 import ukLocale from "@fullcalendar/react/locales/uk";
 import classicThemePlugin from "@fullcalendar/react/themes/classic";
+import timeGridPlugin from "@fullcalendar/react/timegrid";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { uk } from "@/shared/i18n/uk";
 import { listEventsInRange } from "../actions";
-import { DEFAULT_TIME, toLocalParts } from "../lib/datetime";
+import { clickedDateParts, DEFAULT_TIME, toLocalParts } from "../lib/datetime";
 import type { EventDto } from "../lib/event-service";
-import type { EventFilterState } from "../lib/view-state";
+import type { CalendarMode, EventFilterState } from "../lib/view-state";
 import type { EventFormValues } from "./EventDialog";
 import { EventDialogs, editingDialog, type DialogState } from "./EventDialogs";
 import { IMPORTANCE_COLORS } from "./importance";
@@ -27,7 +30,18 @@ import "@fullcalendar/react/skeleton.css";
 import "@fullcalendar/react/themes/classic/theme.css";
 import "@fullcalendar/react/themes/classic/palette.css";
 
-const plugins = [dayGridPlugin, interactionPlugin, classicThemePlugin];
+const plugins = [
+  dayGridPlugin,
+  timeGridPlugin,
+  interactionPlugin,
+  classicThemePlugin,
+];
+
+const VIEW_NAMES: Record<CalendarMode, string> = {
+  month: "dayGridMonth",
+  week: "timeGridWeek",
+  day: "timeGridDay",
+};
 
 function toCalendarEvent(event: EventDto): EventInput {
   const color = IMPORTANCE_COLORS[event.importance];
@@ -41,43 +55,42 @@ function toCalendarEvent(event: EventDto): EventInput {
   };
 }
 
-function emptyForm(date: string): EventFormValues {
-  return {
-    title: "",
-    description: "",
-    date,
-    time: DEFAULT_TIME,
-    importance: "NORMAL",
-  };
+function emptyForm(date: string, time = DEFAULT_TIME): EventFormValues {
+  return { title: "", description: "", date, time, importance: "NORMAL" };
 }
 
 type CalendarProps = {
   /** "yyyy-mm-dd" to open on (from the URL); defaults to today. */
   initialDate?: string;
-  /** Reports the first day of the month shown after navigating. */
+  /** Month, week or day grid (from the URL). */
+  mode?: CalendarMode;
+  /** Reports the first day of the range shown after navigating. */
   onDateChange?: (date: string) => void;
   /** Importance filter and search; a change refetches the visible range. */
   filter?: EventFilterState;
 };
 
-/** Month calendar of the Owner's Events with a create dialog. */
+/** Month/week/day calendar of the Owner's Events with a create dialog. */
 export function EventCalendar({
   initialDate,
+  mode = "month",
   onDateChange,
   filter,
 }: CalendarProps) {
   // Primitive keys keep loadEvents stable until the filter really changes.
   const importanceKey = filter?.importance.join(",") ?? "";
   const searchText = filter?.q ?? "";
-  const shownMonth = useRef(
-    (initialDate ?? toLocalParts(new Date().toISOString()).date).slice(0, 7)
-  );
+  const filtered = importanceKey !== "" || searchText !== "";
+
+  // The first datesSet is the initial render, not a navigation.
+  const lastReported = useRef<string | null>(null);
   const handleDatesSet = useCallback(
     (info: DatesSetInfo) => {
       const { date } = toLocalParts(info.view.currentStart.toISOString());
-      if (date.slice(0, 7) === shownMonth.current) return;
-      shownMonth.current = date.slice(0, 7);
-      onDateChange?.(date);
+      const first = lastReported.current === null;
+      if (date === lastReported.current) return;
+      lastReported.current = date;
+      if (!first) onDateChange?.(date);
     },
     [onDateChange]
   );
@@ -94,6 +107,21 @@ export function EventCalendar({
   const dialogCount = useRef(0);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadedCount, setLoadedCount] = useState<number | null>(null);
+
+  // A mode change in the URL (switcher or browser Back) switches the grid.
+  // The date comes via a ref so only the mode triggers the switch.
+  const dateRef = useRef(initialDate);
+  useEffect(() => {
+    dateRef.current = initialDate;
+  }, [initialDate]);
+  const shownMode = useRef(mode);
+  useEffect(() => {
+    if (shownMode.current === mode) return;
+    shownMode.current = mode;
+    calendarRef.current?.getApi().changeView(VIEW_NAMES[mode], dateRef.current);
+  }, [mode]);
 
   // The callback reads the filter from a ref so its identity never changes
   // (a changing `events` function made FullCalendar refetch in a loop);
@@ -117,6 +145,7 @@ export function EventCalendar({
       // or setting state there updates the Router mid-render. Defer a tick.
       await new Promise((resolve) => setTimeout(resolve, 0));
       if (request !== latestRequest.current) return [];
+      setLoading(true);
       const { importanceKey: levels, searchText: text } = filterRef.current ?? {
         importanceKey: "",
         searchText: "",
@@ -130,6 +159,8 @@ export function EventCalendar({
       if (request !== latestRequest.current) return []; // stale response
       // Past the await we are no longer in FullCalendar's render phase.
       setLoadFailed(!result?.ok);
+      setLoadedCount(result?.ok ? result.data.length : null);
+      setLoading(false);
       return result?.ok ? result.data.map(toCalendarEvent) : [];
     },
     []
@@ -137,10 +168,8 @@ export function EventCalendar({
 
   const handleDateClick = useCallback((info: DateClickInfo) => {
     dialogCount.current += 1;
-    setDialog({
-      key: dialogCount.current,
-      values: emptyForm(info.dateStr.slice(0, 10)),
-    });
+    const { date, time } = clickedDateParts(info.dateStr);
+    setDialog({ key: dialogCount.current, values: emptyForm(date, time) });
   }, []);
 
   const handleEventClick = useCallback((info: EventClickInfo) => {
@@ -162,6 +191,13 @@ export function EventCalendar({
           {uk.events.loadFailed}
         </Alert>
       )}
+      <Box
+        role="status"
+        aria-label={loading ? uk.events.loading : undefined}
+        sx={{ height: 4, mb: 1 }}
+      >
+        {loading && <LinearProgress />}
+      </Box>
       {/* Dates are formatted by the browser's ICU; the server's output differs
           slightly, so the grid is rendered on the client only. */}
       {isClient && (
@@ -169,7 +205,7 @@ export function EventCalendar({
           ref={calendarRef}
           plugins={plugins}
           locale={ukLocale}
-          initialView="dayGridMonth"
+          initialView={VIEW_NAMES[mode]}
           initialDate={initialDate}
           datesSet={handleDatesSet}
           headerToolbar={{ start: "title", end: "today prev,next" }}
@@ -178,6 +214,11 @@ export function EventCalendar({
           dateClick={handleDateClick}
           eventClick={handleEventClick}
         />
+      )}
+      {!loading && !loadFailed && loadedCount === 0 && (
+        <Typography color="text.secondary" sx={{ mt: 2, textAlign: "center" }}>
+          {filtered ? uk.filters.noMatches : uk.events.emptyRange}
+        </Typography>
       )}
       <EventDialogs dialog={dialog} onChange={setDialog} onChanged={refresh} />
     </Box>

@@ -25,3 +25,12 @@ export function fromLocalParts(date: string, time: string): string {
   const instant = new Date(`${date}T${time}`);
   return Number.isNaN(instant.getTime()) ? "" : instant.toISOString();
 }
+
+/** Date (and, for a time-grid slot, time) of a FullCalendar `dateStr`. */
+export function clickedDateParts(dateStr: string): {
+  date: string;
+  time?: string;
+} {
+  const date = dateStr.slice(0, 10);
+  return dateStr.length > 10 ? { date, time: dateStr.slice(11, 16) } : { date };
+}
