@@ -9,14 +9,16 @@ import { uk } from "@/shared/i18n/uk";
 import { toLocalParts } from "../lib/datetime";
 import type { EventFilterState } from "../lib/event-filter";
 import {
-  dateForModeSwitch,
+  changeFilter,
   MODES,
+  navigateToDate,
   parseViewState,
+  switchMode,
+  switchView,
   VIEWS,
-  withViewState,
   type CalendarMode,
-  type ViewState,
-  type ViewStatePatch,
+  type Transition,
+  type View,
 } from "../lib/view-state";
 import { EventCalendar } from "./EventCalendar";
 import { EventFilterBar } from "./EventFilterBar";
@@ -36,13 +38,14 @@ export function EventsWorkspace() {
   } = parseViewState(searchParams);
   const filter = useStableFilter(parsedFilter);
 
-  const update = useCallback(
-    (patch: ViewStatePatch, mode: "push" | "replace") => {
-      const query = withViewState(window.location.search, patch);
-      const url = query ? `${pathname}?${query}` : pathname;
+  const run = useCallback(
+    (transition: Transition | null) => {
+      if (!transition) return;
+      const { search, history } = transition;
+      const url = search ? `${pathname}?${search}` : pathname;
       // Native History API: Next syncs useSearchParams with it, with no
       // server round trip and no transition delaying the calendar mount.
-      window.history[mode === "push" ? "pushState" : "replaceState"](
+      window.history[history === "push" ? "pushState" : "replaceState"](
         null,
         "",
         url
@@ -51,9 +54,10 @@ export function EventsWorkspace() {
     [pathname]
   );
 
-  const changeFilter = useCallback(
-    (patch: Partial<EventFilterState>) => update({ filter: patch }, "replace"),
-    [update]
+  const onFilterChange = useCallback(
+    (patch: Partial<EventFilterState>) =>
+      run(changeFilter(window.location.search, patch)),
+    [run]
   );
 
   return (
@@ -64,8 +68,8 @@ export function EventsWorkspace() {
           size="small"
           value={view}
           aria-label={uk.views.label}
-          onChange={(_, next: ViewState["view"] | null) => {
-            if (next) update({ view: next }, "push");
+          onChange={(_, next: View | null) => {
+            if (next) run(switchView(window.location.search, next));
           }}
         >
           {VIEWS.map((v) => (
@@ -82,15 +86,13 @@ export function EventsWorkspace() {
             aria-label={uk.modes.label}
             onChange={(_, next: CalendarMode | null) => {
               if (!next) return;
-              // Leaving the month grid: land on today rather than the 1st.
-              const anchor =
-                mode === "month" && next !== "month"
-                  ? dateForModeSwitch(
-                      date,
-                      toLocalParts(new Date().toISOString()).date
-                    )
-                  : date;
-              update({ mode: next, date: anchor }, "push");
+              run(
+                switchMode(
+                  window.location.search,
+                  next,
+                  toLocalParts(new Date().toISOString()).date
+                )
+              );
             }}
           >
             {MODES.map((m) => (
@@ -101,12 +103,14 @@ export function EventsWorkspace() {
           </ToggleButtonGroup>
         )}
       </Box>
-      <EventFilterBar value={filter} onChange={changeFilter} />
+      <EventFilterBar value={filter} onChange={onFilterChange} />
       {view === "calendar" ? (
         <EventCalendar
           initialDate={date ?? undefined}
           mode={mode}
-          onDateChange={(next) => update({ date: next }, "replace")}
+          onDateChange={(next) =>
+            run(navigateToDate(window.location.search, next))
+          }
           filter={filter}
         />
       ) : (

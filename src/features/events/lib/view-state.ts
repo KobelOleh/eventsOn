@@ -26,10 +26,9 @@ export type ViewState = {
   filter: EventFilterState;
 };
 
-/** A change to the view state; `filter` may be partial. */
-export type ViewStatePatch = Partial<Omit<ViewState, "filter">> & {
-  filter?: Partial<EventFilterState>;
-};
+/** What the workspace executes: the new query string (without "?") and
+ *  whether it gets its own history entry. */
+export type Transition = { search: string; history: "push" | "replace" };
 
 function isRealDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -55,32 +54,62 @@ export function parseViewState(params: SearchParamsLike): ViewState {
   };
 }
 
-/** The query string (without "?") after applying `patch` to `current`.
- *  `view` is always written explicitly so the URL reflects the screen. */
-export function withViewState(
-  current: URLSearchParams | string,
-  patch: ViewStatePatch
-): string {
-  const next = new URLSearchParams(current);
-  if (patch.view !== undefined) next.set("view", patch.view);
-  if (patch.mode !== undefined) {
-    if (patch.mode === DEFAULT_MODE) next.delete("mode");
-    else next.set("mode", patch.mode);
-  }
-  if (patch.date !== undefined) {
-    if (patch.date === null) next.delete("date");
-    else next.set("date", patch.date);
-  }
-  if (patch.filter !== undefined) {
-    return writeFilter({ ...parseFilter(next), ...patch.filter }, next);
-  }
-  return next.toString();
+type Search = URLSearchParams | string;
+
+/** Writes `view` explicitly so the URL reflects the screen. */
+function withView(search: Search, view: View) {
+  const next = new URLSearchParams(search);
+  next.set("view", view);
+  return next;
 }
 
-/** The date to anchor week/day on when leaving the month grid: today if the
- *  shown month is the current one (the anchor is only its first day), else
- *  the anchor itself. Both are "yyyy-mm-dd"; null anchor = today. */
-export function dateForModeSwitch(anchor: string | null, today: string) {
-  if (anchor === null || anchor.slice(0, 7) === today.slice(0, 7)) return today;
-  return anchor;
+/** Switching view starts a new history entry. */
+export function switchView(search: Search, view: View): Transition {
+  return { search: withView(search, view).toString(), history: "push" };
+}
+
+/** Switching mode starts a new history entry. Leaving the month grid lands on
+ *  today if the shown month is the current one (the anchor is only its first
+ *  day), else keeps the anchor. `today` is a "yyyy-mm-dd" string. */
+export function switchMode(
+  search: Search,
+  mode: CalendarMode,
+  today: string
+): Transition {
+  const current = parseViewState(new URLSearchParams(search));
+  const next = withView(search, current.view);
+  if (mode === DEFAULT_MODE) next.delete("mode");
+  else next.set("mode", mode);
+  if (current.mode === "month" && mode !== "month") {
+    const { date } = current;
+    const landing =
+      date === null || date.slice(0, 7) === today.slice(0, 7) ? today : date;
+    next.set("date", landing);
+  }
+  return { search: next.toString(), history: "push" };
+}
+
+/** Replaces the history entry; null when `date` is already shown. */
+export function navigateToDate(
+  search: Search,
+  date: string
+): Transition | null {
+  const current = parseViewState(new URLSearchParams(search));
+  if (current.date === date) return null;
+  const next = withView(search, current.view);
+  next.set("date", date);
+  return { search: next.toString(), history: "replace" };
+}
+
+/** Replaces the history entry; view, mode and date are left alone. */
+export function changeFilter(
+  search: Search,
+  patch: Partial<EventFilterState>
+): Transition {
+  const current = parseViewState(new URLSearchParams(search));
+  const next = withView(search, current.view);
+  return {
+    search: writeFilter({ ...current.filter, ...patch }, next),
+    history: "replace",
+  };
 }

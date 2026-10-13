@@ -1,12 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { clickedDateParts } from "../lib/datetime";
 import {
-  dateForModeSwitch,
+  changeFilter,
+  navigateToDate,
   parseViewState,
-  withViewState,
+  switchMode,
+  switchView,
 } from "../lib/view-state";
 
 const params = (query: string) => new URLSearchParams(query);
+const TODAY = "2026-10-13";
+
+describe("parseViewState", () => {
+  it("reads the normalised Filter", () => {
+    expect(
+      parseViewState(params("importance=CRITICAL,x&q=%20a")).filter
+    ).toEqual({ importance: ["CRITICAL"], q: "a" });
+  });
+});
 
 describe("calendar mode in the URL", () => {
   it("defaults to month and ignores unknown values", () => {
@@ -18,33 +29,74 @@ describe("calendar mode in the URL", () => {
     expect(parseViewState(params("mode=week")).mode).toBe("week");
     expect(parseViewState(params("mode=day")).mode).toBe("day");
   });
+});
 
-  it("writes the mode without touching other params", () => {
-    const next = new URLSearchParams(
-      withViewState("view=calendar&date=2026-10-01&importance=CRITICAL&q=a", {
-        mode: "week",
-      })
-    );
-    expect(next.get("mode")).toBe("week");
-    expect(next.get("view")).toBe("calendar");
-    expect(next.get("date")).toBe("2026-10-01");
-    expect(next.get("importance")).toBe("CRITICAL");
-    expect(next.get("q")).toBe("a");
+describe("switchView", () => {
+  it("pushes and writes the view explicitly", () => {
+    const t = switchView("", "list");
+    expect(t.history).toBe("push");
+    expect(params(t.search).get("view")).toBe("list");
   });
 
-  it("drops the mode param when switching back to month", () => {
-    expect(withViewState("mode=week", { mode: "month" })).toBe("");
+  it("preserves unknown params", () => {
+    const next = params(switchView("foo=1&q=a", "list").search);
+    expect(next.get("foo")).toBe("1");
+    expect(next.get("q")).toBe("a");
   });
 });
 
-describe("dateForModeSwitch", () => {
-  it("jumps to today when the shown month is the current month", () => {
-    expect(dateForModeSwitch("2026-10-01", "2026-10-13")).toBe("2026-10-13");
-    expect(dateForModeSwitch(null, "2026-10-13")).toBe("2026-10-13");
+describe("switchMode", () => {
+  it("pushes, writes the mode and keeps other params", () => {
+    const t = switchMode(
+      "view=calendar&date=2026-12-01&importance=CRITICAL&q=a&foo=1",
+      "week",
+      TODAY
+    );
+    const next = params(t.search);
+    expect(t.history).toBe("push");
+    expect(next.get("mode")).toBe("week");
+    expect(next.get("view")).toBe("calendar");
+    expect(next.get("importance")).toBe("CRITICAL");
+    expect(next.get("q")).toBe("a");
+    expect(next.get("foo")).toBe("1");
   });
 
-  it("keeps the anchor of any other month", () => {
-    expect(dateForModeSwitch("2026-12-01", "2026-10-13")).toBe("2026-12-01");
+  it("drops the mode param when switching back to month", () => {
+    const next = params(switchMode("mode=week", "month", TODAY).search);
+    expect(next.has("mode")).toBe(false);
+  });
+
+  it("lands on today when leaving the current month's grid", () => {
+    const shown = switchMode("date=2026-10-01", "week", TODAY).search;
+    expect(params(shown).get("date")).toBe(TODAY);
+    expect(params(switchMode("", "day", TODAY).search).get("date")).toBe(TODAY);
+  });
+
+  it("keeps the anchor when leaving any other month", () => {
+    const next = switchMode("date=2026-12-01", "week", TODAY).search;
+    expect(params(next).get("date")).toBe("2026-12-01");
+  });
+
+  it("keeps the date when not leaving the month grid", () => {
+    const toDay = switchMode("mode=week&date=2026-10-05", "day", TODAY).search;
+    expect(params(toDay).get("date")).toBe("2026-10-05");
+    const toMonth = switchMode("mode=week&date=2026-10-05", "month", TODAY);
+    expect(params(toMonth.search).get("date")).toBe("2026-10-05");
+  });
+});
+
+describe("navigateToDate", () => {
+  it("replaces, writes the date and preserves other params", () => {
+    const t = navigateToDate("view=calendar&mode=week&foo=1", "2026-11-02");
+    const next = params(t!.search);
+    expect(t!.history).toBe("replace");
+    expect(next.get("date")).toBe("2026-11-02");
+    expect(next.get("mode")).toBe("week");
+    expect(next.get("foo")).toBe("1");
+  });
+
+  it("is a no-op for the date already shown", () => {
+    expect(navigateToDate("date=2026-11-02", "2026-11-02")).toBeNull();
   });
 });
 
@@ -61,21 +113,25 @@ describe("clickedDateParts", () => {
   });
 });
 
-describe("filter in the URL", () => {
-  it("reads the normalised Filter", () => {
-    expect(
-      parseViewState(params("importance=CRITICAL,x&q=%20a")).filter
-    ).toEqual({ importance: ["CRITICAL"], q: "a" });
-  });
-
-  it("merges a partial Filter patch and keeps unknown params", () => {
-    const next = new URLSearchParams(
-      withViewState("view=list&foo=1&q=a&importance=NORMAL", {
-        filter: { importance: [] },
-      })
-    );
+describe("changeFilter", () => {
+  it("replaces, merges a partial patch and keeps unknown params", () => {
+    const t = changeFilter("view=list&foo=1&q=a&importance=NORMAL", {
+      importance: [],
+    });
+    const next = params(t.search);
+    expect(t.history).toBe("replace");
     expect(next.get("foo")).toBe("1");
     expect(next.get("q")).toBe("a");
     expect(next.has("importance")).toBe(false);
+  });
+
+  it("does not disturb view, mode or date", () => {
+    const next = params(
+      changeFilter("view=calendar&mode=week&date=2026-10-05", { q: "x" }).search
+    );
+    expect(next.get("view")).toBe("calendar");
+    expect(next.get("mode")).toBe("week");
+    expect(next.get("date")).toBe("2026-10-05");
+    expect(next.get("q")).toBe("x");
   });
 });
