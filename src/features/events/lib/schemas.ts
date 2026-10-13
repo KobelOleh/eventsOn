@@ -2,6 +2,7 @@ import { z } from "zod";
 import { uk } from "@/shared/i18n/uk";
 import { IMPORTANCES, MAX_RANGE_DAYS, MAX_SEARCH_LENGTH } from "./constants";
 import { decodeCursor, type Cursor } from "./cursor";
+import { normaliseImportance, normaliseSearch } from "./event-filter";
 
 const e = uk.events.errors;
 
@@ -35,22 +36,21 @@ export type EventFields = z.output<typeof eventFieldsSchema>;
 
 /**
  * Filter and search shared by the Calendar range query and the List query.
- * No levels selected means "all"; a blank search means "no search".
+ * Untrusted input is rejected when malformed or too long, then normalised by
+ * the same function the URL parser uses.
  */
 export const filterSchema = z.object({
   importance: z
     .array(z.enum(IMPORTANCES), { error: e.importanceInvalid })
     .optional()
-    .transform((levels) => [...new Set(levels ?? [])]),
+    .transform((levels) => normaliseImportance(levels ?? [])),
   q: z
     .string({ error: e.searchInvalid })
     .trim()
     .max(MAX_SEARCH_LENGTH, { error: e.searchTooLong })
     .optional()
-    .transform((text) => text || undefined),
+    .transform((text) => normaliseSearch(text ?? "")),
 });
-
-export type EventFilter = z.output<typeof filterSchema>;
 
 /** List view request: optional cursor plus the shared filter. */
 export const listQuerySchema = filterSchema.extend({

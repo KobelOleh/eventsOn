@@ -1,8 +1,8 @@
 import { prisma } from "@/shared/db";
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import type { Importance } from "./constants";
 import type { Cursor } from "./cursor";
-import type { EventFilter } from "./schemas";
+import type { EventFilterState } from "./event-filter";
 
 export type EventRecord = {
   id: string;
@@ -49,7 +49,7 @@ function searchWhere(q: string): Prisma.EventWhereInput[] {
     });
 }
 
-function filterWhere(filter: EventFilter): Prisma.EventWhereInput {
+function filterWhere(filter: EventFilterState): Prisma.EventWhereInput {
   return {
     ...(filter.importance.length > 0 && {
       importance: { in: filter.importance },
@@ -71,7 +71,7 @@ export const eventRepository = {
     ownerId: string,
     after: Cursor | undefined,
     take: number,
-    filter: EventFilter
+    filter: EventFilterState
   ): Promise<EventRecord[]> {
     return prisma.event.findMany({
       where: {
@@ -90,18 +90,28 @@ export const eventRepository = {
     });
   },
 
-  /** Null when the Event does not exist or belongs to another Owner. */
+  /** Null when the Event does not exist or belongs to another Owner. One
+   *  query, so a concurrent delete cannot slip in between write and read. */
   async update(
     ownerId: string,
     id: string,
     data: NewEvent
   ): Promise<EventRecord | null> {
-    const { count } = await prisma.event.updateMany({
-      where: { id, ownerId },
-      data,
-    });
-    if (count === 0) return null;
-    return prisma.event.findFirst({ where: { id, ownerId }, select });
+    try {
+      return await prisma.event.update({
+        where: { id, ownerId },
+        data,
+        select,
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2025" // the update matched no record
+      ) {
+        return null;
+      }
+      throw error;
+    }
   },
 
   /** Permanent. False when nothing of this Owner matched. */
@@ -115,7 +125,7 @@ export const eventRepository = {
     ownerId: string,
     start: Date,
     end: Date,
-    filter: EventFilter
+    filter: EventFilterState
   ): Promise<EventRecord[]> {
     return prisma.event.findMany({
       where: {

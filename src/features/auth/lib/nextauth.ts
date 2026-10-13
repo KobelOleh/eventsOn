@@ -1,12 +1,16 @@
-import NextAuth, { AuthError } from "next-auth";
+import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { getEnv } from "@/shared/config";
 import { createAuthAdapter } from "./adapter";
 import { createAuthService } from "./auth-service";
 import { decideGoogleSignIn } from "./google-sign-in";
+import { createPasswordSignIn } from "./password-sign-in";
 
-const service = createAuthService();
+const passwordSignIn = createPasswordSignIn(
+  createAuthService(),
+  (credentials) => signIn("credentials", { ...credentials, redirect: false })
+);
 
 const { AUTH_GOOGLE_ID, AUTH_GOOGLE_SECRET } = getEnv();
 /** Google sign-in exists only when both keys are set; the login page hides
@@ -24,12 +28,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
       credentials: { email: {}, password: {} },
-      async authorize(credentials) {
-        const result = await service.verifyCredentials(credentials);
-        return result.ok
-          ? { id: result.data.id, email: result.data.email }
-          : null;
-      },
+      authorize: (credentials) => passwordSignIn.authorize(credentials),
     }),
     ...(googleConfigured ? [Google] : []),
   ],
@@ -45,17 +44,5 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
 });
 
-/** Starts a JWT session with an email and password. False when Auth.js
- *  refuses the credentials (its Credentials provider verifies them). */
-export async function signInWithPassword(
-  email: unknown,
-  password: unknown
-): Promise<boolean> {
-  try {
-    await signIn("credentials", { email, password, redirect: false });
-    return true;
-  } catch (error) {
-    if (error instanceof AuthError) return false;
-    throw error;
-  }
-}
+/** Starts a JWT session with an email and password; a refusal says why. */
+export const signInWithPassword = passwordSignIn.signIn;

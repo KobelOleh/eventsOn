@@ -1,13 +1,11 @@
 "use server";
 
-import { fail, ok, type Result } from "@/shared/result";
+import { ok, type Result } from "@/shared/result";
 import { createAuthService } from "./lib/auth-service";
 import { signIn, signInWithPassword, signOut } from "./lib/nextauth";
-import { normaliseEmail } from "./lib/schemas";
+import type { Credentials } from "./lib/password-sign-in";
 
 const service = createAuthService();
-
-type Credentials = { email: unknown; password: unknown };
 
 /** Creates an account and signs the new user in. */
 export async function register(
@@ -23,16 +21,12 @@ export async function register(
   return ok({ email: created.data.email });
 }
 
-/** Starts a JWT session. The credentials are verified once, by the provider
- *  inside `signIn`; only a refusal is checked again, to say why. */
+/** Starts a JWT session; the credentials are verified once, by the provider
+ *  inside `signIn`, and a refusal carries its reason. */
 export async function login(
   input: Credentials
 ): Promise<Result<{ email: string }>> {
-  if (!(await signInWithPassword(input.email, input.password))) {
-    const refused = await service.verifyCredentials(input);
-    return refused.ok ? fail("INVALID_CREDENTIALS") : refused;
-  }
-  return ok({ email: normaliseEmail(String(input.email)) });
+  return signInWithPassword(input.email, input.password);
 }
 
 export async function signOutAction(): Promise<void> {
