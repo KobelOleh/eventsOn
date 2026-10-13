@@ -66,8 +66,30 @@ function decodeCursor(raw: string): Cursor | null {
   }
 }
 
-/** List view request. Filters (importance, search) are added here later. */
-export const listQuerySchema = z.object({
+/** Longest search text accepted. */
+export const MAX_SEARCH_LENGTH = 200;
+
+/**
+ * Filter and search shared by the Calendar range query and the List query.
+ * No levels selected means "all"; a blank search means "no search".
+ */
+export const filterSchema = z.object({
+  importance: z
+    .array(z.enum(IMPORTANCES), { error: e.importanceInvalid })
+    .optional()
+    .transform((levels) => [...new Set(levels ?? [])]),
+  q: z
+    .string({ error: e.searchInvalid })
+    .trim()
+    .max(MAX_SEARCH_LENGTH, { error: e.searchTooLong })
+    .optional()
+    .transform((text) => text || undefined),
+});
+
+export type EventFilter = z.output<typeof filterSchema>;
+
+/** List view request: optional cursor plus the shared filter. */
+export const listQuerySchema = filterSchema.extend({
   cursor: z
     .string({ error: e.cursorInvalid })
     .optional()
@@ -86,8 +108,8 @@ export const listQuerySchema = z.object({
 });
 
 /** Half-open range [start, end) of start times. */
-export const rangeSchema = z
-  .object({ start: instant(e.rangeInvalid), end: instant(e.rangeInvalid) })
+export const rangeSchema = filterSchema
+  .extend({ start: instant(e.rangeInvalid), end: instant(e.rangeInvalid) })
   .refine(
     ({ start, end }) => {
       const span = Date.parse(end) - Date.parse(start);
@@ -95,7 +117,8 @@ export const rangeSchema = z
     },
     { error: e.rangeInvalid, path: ["end"] }
   )
-  .transform(({ start, end }) => ({
+  .transform(({ start, end, ...filter }) => ({
     start: new Date(start),
     end: new Date(end),
+    filter,
   }));

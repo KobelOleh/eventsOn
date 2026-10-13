@@ -16,16 +16,12 @@ import ukLocale from "@fullcalendar/react/locales/uk";
 import classicThemePlugin from "@fullcalendar/react/themes/classic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { uk } from "@/shared/i18n/uk";
-import {
-  createEvent,
-  deleteEvent,
-  listEventsInRange,
-  updateEvent,
-} from "../actions";
+import { listEventsInRange } from "../actions";
 import { DEFAULT_TIME, toLocalParts } from "../lib/datetime";
 import type { EventDto } from "../lib/event-service";
-import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
-import { EventDialog, type EventFormValues } from "./EventDialog";
+import type { EventFilterState } from "../lib/view-state";
+import type { EventFormValues } from "./EventDialog";
+import { EventDialogs, editingDialog, type DialogState } from "./EventDialogs";
 import { IMPORTANCE_COLORS } from "./importance";
 import "@fullcalendar/react/skeleton.css";
 import "@fullcalendar/react/themes/classic/theme.css";
@@ -55,23 +51,24 @@ function emptyForm(date: string): EventFormValues {
   };
 }
 
-type DialogState = {
-  key: number;
-  values: EventFormValues;
-  /** Set when editing an existing Event. */
-  editing?: EventDto;
-  confirmingDelete?: boolean;
-} | null;
-
 type CalendarProps = {
   /** "yyyy-mm-dd" to open on (from the URL); defaults to today. */
   initialDate?: string;
   /** Reports the first day of the month shown after navigating. */
   onDateChange?: (date: string) => void;
+  /** Importance filter and search; a change refetches the visible range. */
+  filter?: EventFilterState;
 };
 
 /** Month calendar of the Owner's Events with a create dialog. */
-export function EventCalendar({ initialDate, onDateChange }: CalendarProps) {
+export function EventCalendar({
+  initialDate,
+  onDateChange,
+  filter,
+}: CalendarProps) {
+  // Primitive keys keep loadEvents stable until the filter really changes.
+  const importanceKey = filter?.importance.join(",") ?? "";
+  const searchText = filter?.q ?? "";
   const shownMonth = useRef(
     (initialDate ?? toLocalParts(new Date().toISOString()).date).slice(0, 7)
   );
@@ -98,6 +95,20 @@ export function EventCalendar({ initialDate, onDateChange }: CalendarProps) {
   const [dialog, setDialog] = useState<DialogState>(null);
   const [loadFailed, setLoadFailed] = useState(false);
 
+  // The callback reads the filter from a ref so its identity never changes
+  // (a changing `events` function made FullCalendar refetch in a loop);
+  // a filter change refetches explicitly in the effect below.
+  // Null until the first effect; FullCalendar mounts after that.
+  const filterRef = useRef<{
+    importanceKey: string;
+    searchText: string;
+  } | null>(null);
+  useEffect(() => {
+    const previous = filterRef.current;
+    filterRef.current = { importanceKey, searchText };
+    if (previous) calendarRef.current?.getApi().refetchEvents();
+  }, [importanceKey, searchText]);
+
   // Must keep a stable identity, or FullCalendar refetches on every render.
   const loadEvents = useCallback(
     async (info: EventSourceFuncInfo): Promise<EventInput[]> => {
@@ -106,9 +117,15 @@ export function EventCalendar({ initialDate, onDateChange }: CalendarProps) {
       // or setting state there updates the Router mid-render. Defer a tick.
       await new Promise((resolve) => setTimeout(resolve, 0));
       if (request !== latestRequest.current) return [];
+      const { importanceKey: levels, searchText: text } = filterRef.current ?? {
+        importanceKey: "",
+        searchText: "",
+      };
       const result = await listEventsInRange({
         start: info.startStr,
         end: info.endStr,
+        importance: levels ? levels.split(",") : [],
+        q: text,
       }).catch(() => null);
       if (request !== latestRequest.current) return []; // stale response
       // Past the await we are no longer in FullCalendar's render phase.
@@ -127,20 +144,13 @@ export function EventCalendar({ initialDate, onDateChange }: CalendarProps) {
   }, []);
 
   const handleEventClick = useCallback((info: EventClickInfo) => {
-    const dto = info.event.extendedProps.dto as EventDto;
-    const { date, time } = toLocalParts(dto.startsAt);
     dialogCount.current += 1;
-    setDialog({
-      key: dialogCount.current,
-      editing: dto,
-      values: {
-        title: dto.title,
-        description: dto.description,
-        date,
-        time,
-        importance: dto.importance,
-      },
-    });
+    setDialog(
+      editingDialog(
+        info.event.extendedProps.dto as EventDto,
+        dialogCount.current
+      )
+    );
   }, []);
 
   const refresh = () => calendarRef.current?.getApi().refetchEvents();
@@ -169,47 +179,7 @@ export function EventCalendar({ initialDate, onDateChange }: CalendarProps) {
           eventClick={handleEventClick}
         />
       )}
-      {dialog && (
-        <EventDialog
-          key={dialog.key}
-          open
-          heading={
-            dialog.editing ? uk.eventEdit.editTitle : uk.events.createTitle
-          }
-          initialValues={dialog.values}
-          onClose={() => setDialog(null)}
-          onSubmit={(payload) =>
-            dialog.editing
-              ? updateEvent(dialog.editing.id, payload)
-              : createEvent(payload)
-          }
-          onSaved={() => {
-            setDialog(null);
-            refresh();
-          }}
-          onDelete={
-            dialog.editing
-              ? () => setDialog({ ...dialog, confirmingDelete: true })
-              : undefined
-          }
-        />
-      )}
-      {dialog?.editing && dialog.confirmingDelete && (
-        <ConfirmDeleteDialog
-          title={dialog.editing.title}
-          onCancel={() => setDialog({ ...dialog, confirmingDelete: false })}
-          onConfirm={async () => {
-            const result = await deleteEvent(dialog.editing!.id);
-            // Already gone elsewhere counts as deleted: the view must refresh.
-            const gone = result.ok || result.error.code === "NOT_FOUND";
-            if (gone) {
-              setDialog(null);
-              refresh();
-            }
-            return gone;
-          }}
-        />
-      )}
+      <EventDialogs dialog={dialog} onChange={setDialog} onChanged={refresh} />
     </Box>
   );
 }

@@ -55,7 +55,8 @@ export function createEventService(repo: EventRepository = eventRepository) {
       const records = await repo.findPage(
         ownerId,
         parsed.data.cursor,
-        PAGE_SIZE + 1
+        PAGE_SIZE + 1,
+        { importance: parsed.data.importance, q: parsed.data.q }
       );
       const page = records.slice(0, PAGE_SIZE);
       const last = page[page.length - 1];
@@ -100,8 +101,13 @@ export function createEventService(repo: EventRepository = eventRepository) {
       if (!parsed.success) {
         return fail("VALIDATION", fieldErrorsOf(parsed.error.issues));
       }
-      const { start, end } = parsed.data;
-      const records = await repo.findStartingBetween(ownerId, start, end);
+      const { start, end, filter } = parsed.data;
+      const records = await repo.findStartingBetween(
+        ownerId,
+        start,
+        end,
+        filter
+      );
       return ok(records.map(toDto));
     },
   };

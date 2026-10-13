@@ -1,6 +1,7 @@
 // URL search-param state of the events screen. Pure and client-safe.
-// Unknown params (e.g. `importance` and `q`, added by the filter ticket) are
-// always preserved, so new filters need no change to this file's callers.
+// Unknown params are always preserved.
+
+import { IMPORTANCES, type Importance } from "./schemas";
 
 export const VIEWS = ["calendar", "list"] as const;
 export type View = (typeof VIEWS)[number];
@@ -10,7 +11,14 @@ export type ViewState = {
   view: View;
   /** Browser-local "yyyy-mm-dd" the calendar is anchored on; null = today. */
   date: string | null;
+  /** Selected Importance levels (comma-separated in the URL); [] = all. */
+  importance: Importance[];
+  /** Search text; "" = no search. */
+  q: string;
 };
+
+/** The filter part of the state, as passed to both views. */
+export type EventFilterState = Pick<ViewState, "importance" | "q">;
 
 type SearchParamsLike = { get(name: string): string | null };
 
@@ -29,9 +37,12 @@ function isRealDate(value: string): boolean {
 export function parseViewState(params: SearchParamsLike): ViewState {
   const view = params.get("view");
   const date = params.get("date");
+  const selected = (params.get("importance") ?? "").split(",");
   return {
     view: VIEWS.find((v) => v === view) ?? DEFAULT_VIEW,
     date: date !== null && isRealDate(date) ? date : null,
+    importance: IMPORTANCES.filter((level) => selected.includes(level)),
+    q: params.get("q") ?? "",
   };
 }
 
@@ -46,6 +57,14 @@ export function withViewState(
   if (patch.date !== undefined) {
     if (patch.date === null) next.delete("date");
     else next.set("date", patch.date);
+  }
+  if (patch.importance !== undefined) {
+    if (patch.importance.length === 0) next.delete("importance");
+    else next.set("importance", patch.importance.join(","));
+  }
+  if (patch.q !== undefined) {
+    if (patch.q === "") next.delete("q");
+    else next.set("q", patch.q);
   }
   return next.toString();
 }
