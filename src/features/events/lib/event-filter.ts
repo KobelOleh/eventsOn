@@ -8,7 +8,7 @@ export type EventFilterState = { importance: Importance[]; q: string };
 
 export const UNFILTERED: EventFilterState = { importance: [], q: "" };
 
-type SearchParamsLike = { get(name: string): string | null };
+export type SearchParamsLike = { get(name: string): string | null };
 
 /** Normalised: trimmed and length-capped search, unique known Importance
  *  levels in canonical order. Never fails. */

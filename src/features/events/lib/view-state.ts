@@ -3,6 +3,7 @@
 
 import {
   parseFilter,
+  type SearchParamsLike,
   writeFilter,
   type EventFilterState,
 } from "./event-filter";
@@ -29,8 +30,6 @@ export type ViewState = {
 export type ViewStatePatch = Partial<Omit<ViewState, "filter">> & {
   filter?: Partial<EventFilterState>;
 };
-
-type SearchParamsLike = { get(name: string): string | null };
 
 function isRealDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
