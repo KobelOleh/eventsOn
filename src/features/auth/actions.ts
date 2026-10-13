@@ -39,3 +39,8 @@ export async function login(
 export async function signOutAction(): Promise<void> {
   await signOut({ redirectTo: "/login" });
 }
+
+/** Starts the Google OAuth flow; the callback enforces ADR 0004. */
+export async function signInWithGoogle(): Promise<void> {
+  await signIn("google", { redirectTo: "/" });
+}

@@ -18,6 +18,7 @@ export const uk = {
     signIn: "Увійти",
     register: "Зареєструватися",
     signOut: "Вийти",
+    signInWithGoogle: "Увійти через Google",
     toRegister: "Немає облікового запису? Зареєструватися",
     toLogin: "Вже є обліковий запис? Увійти",
     errors: {
