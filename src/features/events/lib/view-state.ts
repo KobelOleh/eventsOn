@@ -7,8 +7,14 @@ export const VIEWS = ["calendar", "list"] as const;
 export type View = (typeof VIEWS)[number];
 export const DEFAULT_VIEW: View = "calendar";
 
+export const MODES = ["month", "week", "day"] as const;
+export type CalendarMode = (typeof MODES)[number];
+export const DEFAULT_MODE: CalendarMode = "month";
+
 export type ViewState = {
   view: View;
+  /** Calendar granularity (month/week/day); ignored by the list view. */
+  mode: CalendarMode;
   /** Browser-local "yyyy-mm-dd" the calendar is anchored on; null = today. */
   date: string | null;
   /** Selected Importance levels (comma-separated in the URL); [] = all. */
@@ -36,10 +42,12 @@ function isRealDate(value: string): boolean {
 /** Invalid or missing values fall back to defaults instead of failing. */
 export function parseViewState(params: SearchParamsLike): ViewState {
   const view = params.get("view");
+  const mode = params.get("mode");
   const date = params.get("date");
   const selected = (params.get("importance") ?? "").split(",");
   return {
     view: VIEWS.find((v) => v === view) ?? DEFAULT_VIEW,
+    mode: MODES.find((m) => m === mode) ?? DEFAULT_MODE,
     date: date !== null && isRealDate(date) ? date : null,
     importance: IMPORTANCES.filter((level) => selected.includes(level)),
     q: params.get("q") ?? "",
@@ -54,6 +62,10 @@ export function withViewState(
 ): string {
   const next = new URLSearchParams(current);
   if (patch.view !== undefined) next.set("view", patch.view);
+  if (patch.mode !== undefined) {
+    if (patch.mode === DEFAULT_MODE) next.delete("mode");
+    else next.set("mode", patch.mode);
+  }
   if (patch.date !== undefined) {
     if (patch.date === null) next.delete("date");
     else next.set("date", patch.date);
@@ -67,4 +79,12 @@ export function withViewState(
     else next.set("q", patch.q);
   }
   return next.toString();
+}
+
+/** The date to anchor week/day on when leaving the month grid: today if the
+ *  shown month is the current one (the anchor is only its first day), else
+ *  the anchor itself. Both are "yyyy-mm-dd"; null anchor = today. */
+export function dateForModeSwitch(anchor: string | null, today: string) {
+  if (anchor === null || anchor.slice(0, 7) === today.slice(0, 7)) return today;
+  return anchor;
 }
