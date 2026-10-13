@@ -10,7 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { uk } from "@/shared/i18n/uk";
 import { listEvents } from "../actions";
 import type { EventDto } from "../lib/event-service";
-import type { EventFilterState } from "../lib/event-filter";
+import { isNarrowing, type EventFilterState } from "../lib/event-filter";
 import { useRegisterCreateEvent } from "./create-event";
 import {
   creatingDialog,
@@ -18,20 +18,17 @@ import {
   EventDialogs,
   type DialogState,
 } from "./EventDialogs";
-import { deriveFilterKeys, toFilterQuery } from "./filter-keys";
 import { EventListItem } from "./EventListItem";
 import { EventListSkeleton } from "./skeletons";
 
 type Props = {
   /** Importance filter and search; a change reloads from the first page. */
-  filter?: EventFilterState;
+  filter: EventFilterState;
 };
 
 /** The Owner's Events as a paged list, earliest first, 20 at a time.
  *  Clicking a row opens the edit dialog; the list reloads after a change. */
 export function EventList({ filter }: Props) {
-  const { importanceKey, searchText, isFiltered } = deriveFilterKeys(filter);
-
   const [items, setItems] = useState<EventDto[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true); // first page, initially
@@ -45,9 +42,10 @@ export function EventList({ filter }: Props) {
   const query = useCallback(
     (cursor: string | null) => ({
       ...(cursor && { cursor }),
-      ...toFilterQuery({ importanceKey, searchText }),
+      importance: filter.importance,
+      q: filter.q,
     }),
-    [importanceKey, searchText]
+    [filter]
   );
 
   /** Loads the first page, replacing the list. */
@@ -137,7 +135,7 @@ export function EventList({ filter }: Props) {
       <>
         <Paper variant="outlined" sx={{ p: 4, textAlign: "center" }}>
           <Typography color="text.secondary">
-            {isFiltered ? uk.filters.noMatches : uk.list.empty}
+            {isNarrowing(filter) ? uk.filters.noMatches : uk.list.empty}
           </Typography>
         </Paper>
         {dialogs}

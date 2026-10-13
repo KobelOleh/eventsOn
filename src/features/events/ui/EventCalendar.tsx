@@ -22,7 +22,11 @@ import { uk } from "@/shared/i18n/uk";
 import { listEventsInRange } from "../actions";
 import { clickedDateParts, toLocalParts } from "../lib/datetime";
 import type { EventDto } from "../lib/event-service";
-import type { EventFilterState } from "../lib/event-filter";
+import {
+  isNarrowing,
+  UNFILTERED,
+  type EventFilterState,
+} from "../lib/event-filter";
 import type { CalendarMode } from "../lib/view-state";
 import { useRegisterCreateEvent } from "./create-event";
 import {
@@ -31,7 +35,6 @@ import {
   EventDialogs,
   type DialogState,
 } from "./EventDialogs";
-import { deriveFilterKeys, toFilterQuery } from "./filter-keys";
 import { IMPORTANCE_COLORS, IMPORTANCE_TEXT_COLOR } from "./importance";
 import { CalendarGridSkeleton } from "./skeletons";
 import "@fullcalendar/react/skeleton.css";
@@ -71,7 +74,7 @@ type CalendarProps = {
   /** Reports the first day of the range shown after navigating. */
   onDateChange?: (date: string) => void;
   /** Importance filter and search; a change refetches the visible range. */
-  filter?: EventFilterState;
+  filter: EventFilterState;
 };
 
 /** Month/week/day calendar of the Owner's Events with a create dialog. */
@@ -81,9 +84,6 @@ export function EventCalendar({
   onDateChange,
   filter,
 }: CalendarProps) {
-  // Primitive keys keep loadEvents stable until the filter really changes.
-  const { importanceKey, searchText, isFiltered } = deriveFilterKeys(filter);
-
   // The first datesSet is the initial render, not a navigation.
   const lastReported = useRef<string | null>(null);
   const handleDatesSet = useCallback(
@@ -129,15 +129,12 @@ export function EventCalendar({
   // (a changing `events` function made FullCalendar refetch in a loop);
   // a filter change refetches explicitly in the effect below.
   // Null until the first effect; FullCalendar mounts after that.
-  const filterRef = useRef<{
-    importanceKey: string;
-    searchText: string;
-  } | null>(null);
+  const filterRef = useRef<EventFilterState | null>(null);
   useEffect(() => {
     const previous = filterRef.current;
-    filterRef.current = { importanceKey, searchText };
+    filterRef.current = filter;
     if (previous) calendarRef.current?.getApi().refetchEvents();
-  }, [importanceKey, searchText]);
+  }, [filter]);
 
   // Must keep a stable identity, or FullCalendar refetches on every render.
   const loadEvents = useCallback(
@@ -151,9 +148,7 @@ export function EventCalendar({
       const result = await listEventsInRange({
         start: info.startStr,
         end: info.endStr,
-        ...toFilterQuery(
-          filterRef.current ?? { importanceKey: "", searchText: "" }
-        ),
+        ...(filterRef.current ?? UNFILTERED),
       }).catch(() => null);
       if (request !== latestRequest.current) return []; // stale response
       // Past the await we are no longer in FullCalendar's render phase.
@@ -190,7 +185,7 @@ export function EventCalendar({
 
   const isEmpty = !loading && !loadFailed && loadedCount === 0;
   const emptyMessage = isEmpty
-    ? isFiltered
+    ? isNarrowing(filter)
       ? uk.filters.noMatches
       : uk.events.emptyRange
     : null;

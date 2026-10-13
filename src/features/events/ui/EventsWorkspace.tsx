@@ -21,13 +21,20 @@ import {
 import { EventCalendar } from "./EventCalendar";
 import { EventFilterBar } from "./EventFilterBar";
 import { EventList } from "./EventList";
+import { useStableFilter } from "./use-filter";
 
 /** Calendar/List switcher whose state (view, date, and any other params such
  *  as future filters) lives in the URL, so reload and share reproduce it. */
 export function EventsWorkspace() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { view, mode, date, filter } = parseViewState(searchParams);
+  const {
+    view,
+    mode,
+    date,
+    filter: parsedFilter,
+  } = parseViewState(searchParams);
+  const filter = useStableFilter(parsedFilter);
 
   const update = useCallback(
     (patch: ViewStatePatch, mode: "push" | "replace") => {
