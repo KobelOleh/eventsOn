@@ -15,7 +15,7 @@ export class CredentialsRefused extends CredentialsSignin {
   }
 }
 
-type Credentials = { email: unknown; password: unknown };
+export type Credentials = { email: unknown; password: unknown };
 
 /**
  * Email-and-password sign-in on top of Auth.js: the credentials are verified

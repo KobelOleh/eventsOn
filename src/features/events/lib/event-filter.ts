@@ -18,11 +18,20 @@ export function normaliseFilter(raw: {
   importance?: readonly string[];
   q?: string;
 }): EventFilterState {
-  const selected = raw.importance ?? [];
   return {
-    importance: IMPORTANCES.filter((level) => selected.includes(level)),
-    q: (raw.q ?? "").trim().slice(0, MAX_SEARCH_LENGTH).trimEnd(),
+    importance: normaliseImportance(raw.importance ?? []),
+    q: normaliseSearch(raw.q ?? ""),
   };
+}
+
+/** Unique known Importance levels in canonical order. */
+export function normaliseImportance(levels: readonly string[]): Importance[] {
+  return IMPORTANCES.filter((level) => levels.includes(level));
+}
+
+/** Trimmed and cut to MAX_SEARCH_LENGTH. */
+export function normaliseSearch(text: string): string {
+  return text.trim().slice(0, MAX_SEARCH_LENGTH).trimEnd();
 }
 
 /** Reads the Filter from URL params; anything unusable falls back to

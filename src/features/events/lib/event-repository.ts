@@ -1,5 +1,5 @@
 import { prisma } from "@/shared/db";
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import type { Importance } from "./constants";
 import type { Cursor } from "./cursor";
 import type { EventFilterState } from "./event-filter";
@@ -26,15 +26,6 @@ const select = {
   startsAt: true,
   importance: true,
 } as const;
-
-/** Prisma's P2025: an update or delete matched no record. */
-function isRecordNotFound(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    (error as { code?: unknown }).code === "P2025"
-  );
-}
 
 /** Prisma's `contains` does NOT escape LIKE wildcards (verified by tests), so
  *  `\`, `%` and `_` are escaped here to match literally (Postgres' default
@@ -113,7 +104,12 @@ export const eventRepository = {
         select,
       });
     } catch (error) {
-      if (isRecordNotFound(error)) return null;
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2025" // the update matched no record
+      ) {
+        return null;
+      }
       throw error;
     }
   },

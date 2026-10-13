@@ -2,7 +2,7 @@ import { z } from "zod";
 import { uk } from "@/shared/i18n/uk";
 import { IMPORTANCES, MAX_RANGE_DAYS, MAX_SEARCH_LENGTH } from "./constants";
 import { decodeCursor, type Cursor } from "./cursor";
-import { normaliseFilter } from "./event-filter";
+import { normaliseImportance, normaliseSearch } from "./event-filter";
 
 const e = uk.events.errors;
 
@@ -43,13 +43,13 @@ export const filterSchema = z.object({
   importance: z
     .array(z.enum(IMPORTANCES), { error: e.importanceInvalid })
     .optional()
-    .transform((levels) => normaliseFilter({ importance: levels }).importance),
+    .transform((levels) => normaliseImportance(levels ?? [])),
   q: z
     .string({ error: e.searchInvalid })
     .trim()
     .max(MAX_SEARCH_LENGTH, { error: e.searchTooLong })
     .optional()
-    .transform((text) => normaliseFilter({ q: text }).q),
+    .transform((text) => normaliseSearch(text ?? "")),
 });
 
 /** List view request: optional cursor plus the shared filter. */

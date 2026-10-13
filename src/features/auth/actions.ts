@@ -3,10 +3,9 @@
 import { ok, type Result } from "@/shared/result";
 import { createAuthService } from "./lib/auth-service";
 import { signIn, signInWithPassword, signOut } from "./lib/nextauth";
+import type { Credentials } from "./lib/password-sign-in";
 
 const service = createAuthService();
-
-type Credentials = { email: unknown; password: unknown };
 
 /** Creates an account and signs the new user in. */
 export async function register(
