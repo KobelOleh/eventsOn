@@ -1,4 +1,4 @@
-import { AuthError, CredentialsSignin } from "next-auth";
+import { CredentialsSignin } from "next-auth";
 import { ok, type ActionError, type Result } from "@/shared/result";
 import type { AuthenticatedUser } from "./auth-service";
 import { normaliseEmail } from "./schemas";
@@ -49,10 +49,12 @@ export function createPasswordSignIn(
         if (error instanceof CredentialsRefused) {
           return { ok: false, error: error.refusal };
         }
-        // Auth.js refused without our reason: report it as bad credentials.
-        if (error instanceof AuthError) {
+        // Auth.js itself refused the credentials (authorize returned null).
+        if (error instanceof CredentialsSignin) {
           return { ok: false, error: { code: "INVALID_CREDENTIALS" } };
         }
+        // Any other AuthError (e.g. CallbackRouteError wrapping a failure
+        // inside `authorize`) is not a wrong password: let it surface.
         throw error;
       }
     },

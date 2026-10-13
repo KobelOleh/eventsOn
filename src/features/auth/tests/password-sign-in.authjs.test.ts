@@ -10,35 +10,45 @@ import { createPasswordSignIn } from "../lib/password-sign-in";
 // The same flow as production but through Auth.js' real core instead of a
 // stand-in, so a version bump that stops rethrowing the refusal from
 // `authorize` fails here (see CredentialsRefused).
+function signInThroughAuthJs(
+  verifier: Parameters<typeof createPasswordSignIn>[0]
+) {
+  const passwordSignIn = createPasswordSignIn(
+    verifier,
+    async ({ email, password }) => {
+      const request = new Request(
+        "http://localhost/auth/callback/credentials",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            email: String(email),
+            password: String(password),
+            callbackUrl: "http://localhost/",
+          }),
+        }
+      );
+      return Auth(request, {
+        raw,
+        skipCSRFCheck,
+        basePath: "/auth",
+        secret: "test-secret",
+        trustHost: true,
+        session: { strategy: "jwt" },
+        providers: [
+          Credentials({
+            credentials: { email: {}, password: {} },
+            authorize: (credentials) => passwordSignIn.authorize(credentials),
+          }),
+        ],
+      });
+    }
+  );
+  return passwordSignIn;
+}
+
 const service = createAuthService();
-const passwordSignIn = createPasswordSignIn(
-  service,
-  async ({ email, password }) => {
-    const request = new Request("http://localhost/auth/callback/credentials", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        email: String(email),
-        password: String(password),
-        callbackUrl: "http://localhost/",
-      }),
-    });
-    return Auth(request, {
-      raw,
-      skipCSRFCheck,
-      basePath: "/auth",
-      secret: "test-secret",
-      trustHost: true,
-      session: { strategy: "jwt" },
-      providers: [
-        Credentials({
-          credentials: { email: {}, password: {} },
-          authorize: (credentials) => passwordSignIn.authorize(credentials),
-        }),
-      ],
-    });
-  }
-);
+const passwordSignIn = signInThroughAuthJs(service);
 
 describe("password sign-in through the real Auth.js core", () => {
   beforeEach(async () => {
@@ -89,5 +99,17 @@ describe("password sign-in through the real Auth.js core", () => {
         fieldErrors: { form: [uk.auth.errors.useGoogle] },
       },
     });
+  });
+
+  it("does not report a failure inside authorize as wrong credentials", async () => {
+    const broken = signInThroughAuthJs({
+      verifyCredentials: async () => {
+        throw new Error("database down");
+      },
+    });
+
+    await expect(
+      broken.signIn("c@example.com", "whatever pass")
+    ).rejects.toThrow();
   });
 });
