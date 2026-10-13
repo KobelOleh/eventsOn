@@ -3,7 +3,6 @@
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import CircularProgress from "@mui/material/CircularProgress";
 import List from "@mui/material/List";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
@@ -21,6 +20,7 @@ import {
 } from "./EventDialogs";
 import { deriveFilterKeys, toFilterQuery } from "./filter-keys";
 import { EventListItem } from "./EventListItem";
+import { EventListSkeleton } from "./skeletons";
 
 type Props = {
   /** Importance filter and search; a change reloads from the first page. */
@@ -110,14 +110,7 @@ export function EventList({ filter }: Props) {
   if (loading) {
     return (
       <>
-        <Box
-          role="status"
-          aria-label={uk.list.loading}
-          sx={{ display: "flex", alignItems: "center", gap: 2, py: 4 }}
-        >
-          <CircularProgress size={24} />
-          <Typography color="text.secondary">{uk.list.loading}</Typography>
-        </Box>
+        <EventListSkeleton />
         {dialogs}
       </>
     );
@@ -178,9 +171,9 @@ export function EventList({ filter }: Props) {
           <Button
             variant="outlined"
             onClick={() => void showMore()}
-            disabled={loadingMore}
+            loading={loadingMore}
           >
-            {loadingMore ? uk.list.loading : uk.list.showMore}
+            {uk.list.showMore}
           </Button>
         </Box>
       )}

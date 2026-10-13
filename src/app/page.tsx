@@ -8,6 +8,7 @@ import {
   CreateEventFab,
   CreateEventProvider,
   EventsWorkspace,
+  EventsWorkspaceSkeleton,
 } from "@/features/events";
 import { uk } from "@/shared/i18n/uk";
 import { BrandMark } from "@/shared/ui/BrandMark";
@@ -42,7 +43,10 @@ export default async function HomePage() {
             <Chip
               label={user?.email}
               size="small"
-              sx={{ display: { xs: "none", sm: "inline-flex" } }}
+              sx={{
+                display: { xs: "none", sm: "inline-flex" },
+                maxWidth: 240,
+              }}
             />
             <SignOutButton />
           </Paper>
@@ -63,7 +67,7 @@ export default async function HomePage() {
               boxShadow: "0 16px 50px rgba(70,50,160,0.14)",
             }}
           >
-            <Suspense>
+            <Suspense fallback={<EventsWorkspaceSkeleton />}>
               <EventsWorkspace />
             </Suspense>
           </Paper>

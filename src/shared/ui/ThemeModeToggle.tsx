@@ -20,8 +20,9 @@ export function ThemeModeToggle() {
     <ToggleButtonGroup
       exclusive
       size="small"
-      // `mode` is undefined until hydration; "system" is the default.
-      value={mode ?? "system"}
+      // `mode` is undefined until hydration: select nothing rather than
+      // flash "system" and then jump to the stored choice.
+      value={mode ?? null}
       aria-label={uk.ui.themeMode.label}
       onChange={(_, next: Mode | null) => {
         if (next) setMode(next);

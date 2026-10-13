@@ -4,3 +4,5 @@ export { EventCalendar } from "./ui/EventCalendar";
 export { EventsWorkspace } from "./ui/EventsWorkspace";
 // Open the create dialog of the mounted view from outside the workspace.
 export { CreateEventFab, CreateEventProvider } from "./ui/create-event";
+// Placeholder for the workspace, e.g. as a Suspense fallback.
+export { EventsWorkspaceSkeleton } from "./ui/skeletons";

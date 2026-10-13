@@ -54,7 +54,7 @@ export function ConfirmDeleteDialog({ title, onCancel, onConfirm }: Props) {
           color="error"
           variant="contained"
           onClick={() => void confirm()}
-          disabled={pending}
+          loading={pending}
         >
           {t.deleteConfirm}
         </Button>

@@ -171,7 +171,7 @@ export function CredentialsForm({
             variant="contained"
             fullWidth
             size="large"
-            disabled={pending}
+            loading={pending}
             sx={{ mt: 2, py: 1.4 }}
           >
             {isLogin ? t.signIn : t.register}

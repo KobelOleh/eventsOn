@@ -32,6 +32,7 @@ import {
 } from "./EventDialogs";
 import { deriveFilterKeys, toFilterQuery } from "./filter-keys";
 import { IMPORTANCE_COLORS, IMPORTANCE_TEXT_COLOR } from "./importance";
+import { CalendarGridSkeleton } from "./skeletons";
 import "@fullcalendar/react/skeleton.css";
 import "@fullcalendar/react/themes/classic/theme.css";
 import "@fullcalendar/react/themes/classic/palette.css";
@@ -204,26 +205,43 @@ export function EventCalendar({
       </Box>
       {/* Dates are formatted by the browser's ICU; the server's output differs
           slightly, so the grid is rendered on the client only. */}
+      {!isClient && <CalendarGridSkeleton />}
       {isClient && (
-        <FullCalendar
-          ref={calendarRef}
-          plugins={plugins}
-          locale={ukLocale}
-          initialView={VIEW_NAMES[mode]}
-          initialDate={initialDate}
-          datesSet={handleDatesSet}
-          headerToolbar={{ start: "title", end: "today prev,next" }}
-          height="auto"
-          events={loadEvents}
-          dateClick={handleDateClick}
-          eventClick={handleEventClick}
-        />
+        <Box
+          // Day/time cells open the create dialog and events open the edit
+          // dialog, so the whole grid reads as clickable (headers excepted).
+          sx={{
+            cursor: "pointer",
+            "& [role='columnheader'], & th": { cursor: "default" },
+          }}
+        >
+          <FullCalendar
+            ref={calendarRef}
+            plugins={plugins}
+            locale={ukLocale}
+            initialView={VIEW_NAMES[mode]}
+            initialDate={initialDate}
+            datesSet={handleDatesSet}
+            headerToolbar={{ start: "title", end: "today prev,next" }}
+            height="auto"
+            events={loadEvents}
+            dateClick={handleDateClick}
+            eventClick={handleEventClick}
+          />
+        </Box>
       )}
-      {!loading && !loadFailed && loadedCount === 0 && (
-        <Typography color="text.secondary" sx={{ mt: 2, textAlign: "center" }}>
-          {isFiltered ? uk.filters.noMatches : uk.events.emptyRange}
-        </Typography>
-      )}
+      {/* The line is always reserved so the empty message cannot push the
+          page down when a range loads with no Events. */}
+      <Typography
+        color="text.secondary"
+        sx={{ mt: 2, minHeight: 24, textAlign: "center" }}
+      >
+        {!loading && !loadFailed && loadedCount === 0
+          ? isFiltered
+            ? uk.filters.noMatches
+            : uk.events.emptyRange
+          : null}
+      </Typography>
       <EventDialogs dialog={dialog} onChange={setDialog} onChanged={refresh} />
     </Box>
   );

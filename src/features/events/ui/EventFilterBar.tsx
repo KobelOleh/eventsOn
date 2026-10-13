@@ -115,6 +115,7 @@ export function EventFilterBar({ value, onChange }: Props) {
               <InputAdornment position="end">
                 <IconButton
                   size="small"
+                  edge="end"
                   aria-label={uk.filters.clearSearch}
                   onClick={() => setText("")}
                 >
@@ -131,18 +132,21 @@ export function EventFilterBar({ value, onChange }: Props) {
           "& .MuiOutlinedInput-root": { borderRadius: 999 },
         }}
       />
-      {filtered && (
-        <Button
-          size="small"
-          onClick={() => {
-            setText("");
-            reported.current = "";
-            onChange({ importance: [], q: "" });
-          }}
-        >
-          {uk.filters.reset}
-        </Button>
-      )}
+      {/* Kept in the layout (just hidden) so the row does not reflow when the
+          first filter is applied. */}
+      <Button
+        size="small"
+        tabIndex={filtered ? 0 : -1}
+        aria-hidden={!filtered}
+        sx={{ visibility: filtered ? "visible" : "hidden" }}
+        onClick={() => {
+          setText("");
+          reported.current = "";
+          onChange({ importance: [], q: "" });
+        }}
+      >
+        {uk.filters.reset}
+      </Button>
     </Box>
   );
 }

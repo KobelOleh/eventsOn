@@ -34,6 +34,12 @@ const channel = (name: string) => `var(--mui-palette-${name}Channel)`;
 const calendarVariables: NonNullable<ThemeOptions["components"]> = {
   MuiCssBaseline: {
     styleOverrides: {
+      // Reserve the scrollbar's width so the layout does not shift when it
+      // appears (a taller view) or when a dialog locks the page scroll.
+      html: { scrollbarGutter: "stable" },
+      // Native date/time inputs open their picker from a click.
+      'input[type="date"], input[type="time"], ::-webkit-calendar-picker-indicator':
+        { cursor: "pointer" },
       "html:root": {
         "--fc-classic-background": "var(--mui-palette-background-paper)",
         "--fc-classic-foreground": "var(--mui-palette-text-primary)",
@@ -90,8 +96,13 @@ export const theme = createTheme({
     ...calendarVariables,
     MuiButton: {
       defaultProps: { disableElevation: true },
-      styleOverrides: { root: { borderRadius: 999, paddingInline: 22 } },
+      styleOverrides: {
+        root: { borderRadius: 999, paddingInline: 22, cursor: "pointer" },
+      },
     },
+    MuiSelect: { styleOverrides: { select: { cursor: "pointer" } } },
+    MuiMenuItem: { styleOverrides: { root: { cursor: "pointer" } } },
+    MuiFab: { styleOverrides: { root: { cursor: "pointer" } } },
     MuiOutlinedInput: {
       styleOverrides: {
         root: ({ theme }) => ({
@@ -134,6 +145,7 @@ export const theme = createTheme({
           border: 0,
           borderRadius: 999,
           paddingInline: 16,
+          cursor: "pointer",
           color: theme.vars.palette.text.secondary,
           "&.Mui-selected, &.Mui-selected:hover": {
             color: theme.vars.palette.primary.contrastText,

@@ -192,7 +192,7 @@ export function EventDialog({
           type="submit"
           form="event-form"
           variant="contained"
-          disabled={pending}
+          loading={pending}
         >
           {t.save}
         </Button>
