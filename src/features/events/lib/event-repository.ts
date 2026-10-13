@@ -1,5 +1,6 @@
 import { prisma } from "@/shared/db";
-import type { Importance } from "./schemas";
+import type { Prisma } from "@/generated/prisma/client";
+import type { EventFilter, Importance } from "./schemas";
 
 export type EventRecord = {
   id: string;
@@ -24,6 +25,26 @@ const select = {
   importance: true,
 } as const;
 
+/** Prisma's `contains` does NOT escape LIKE wildcards (verified by tests), so
+ *  `\`, `%` and `_` are escaped here to match literally (Postgres' default
+ *  LIKE escape character is the backslash). */
+const escapeLike = (text: string) => text.replace(/[\\%_]/g, "\\$&");
+
+function filterWhere(filter: EventFilter): Prisma.EventWhereInput {
+  const q = filter.q === undefined ? undefined : escapeLike(filter.q);
+  return {
+    ...(filter.importance.length > 0 && {
+      importance: { in: filter.importance },
+    }),
+    ...(q && {
+      OR: [
+        { title: { contains: q, mode: "insensitive" } },
+        { description: { contains: q, mode: "insensitive" } },
+      ],
+    }),
+  };
+}
+
 /** The only place that touches Prisma for Events. Every method takes the
  *  ownerId and scopes by it (ADR 0002). */
 export const eventRepository = {
@@ -36,11 +57,13 @@ export const eventRepository = {
   findPage(
     ownerId: string,
     after: { startsAt: Date; id: string } | undefined,
-    take: number
+    take: number,
+    filter: EventFilter
   ): Promise<EventRecord[]> {
     return prisma.event.findMany({
       where: {
         ownerId,
+        ...filterWhere(filter),
         ...(after && {
           OR: [
             { startsAt: { gt: after.startsAt } },
@@ -78,10 +101,15 @@ export const eventRepository = {
   findStartingBetween(
     ownerId: string,
     start: Date,
-    end: Date
+    end: Date,
+    filter: EventFilter
   ): Promise<EventRecord[]> {
     return prisma.event.findMany({
-      where: { ownerId, startsAt: { gte: start, lt: end } },
+      where: {
+        ownerId,
+        ...filterWhere(filter),
+        startsAt: { gte: start, lt: end },
+      },
       orderBy: [{ startsAt: "asc" }, { id: "asc" }],
       select,
     });

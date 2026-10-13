@@ -11,54 +11,90 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { uk } from "@/shared/i18n/uk";
 import { listEvents } from "../actions";
 import type { EventDto } from "../lib/event-service";
+import type { EventFilterState } from "../lib/view-state";
+import { EventDialogs, editingDialog, type DialogState } from "./EventDialogs";
 import { EventListItem } from "./EventListItem";
 
 type Props = {
-  /** Called when a row is clicked (wired to edit by a later ticket). */
-  onSelectEvent?: (event: EventDto) => void;
+  /** Importance filter and search; a change reloads from the first page. */
+  filter?: EventFilterState;
 };
 
-/** The Owner's Events as a paged list, earliest first, 20 at a time. */
-export function EventList({ onSelectEvent }: Props) {
+/** The Owner's Events as a paged list, earliest first, 20 at a time.
+ *  Clicking a row opens the edit dialog; the list reloads after a change. */
+export function EventList({ filter }: Props) {
+  const importanceKey = filter?.importance.join(",") ?? "";
+  const searchText = filter?.q ?? "";
+  const filtered = importanceKey !== "" || searchText !== "";
+
   const [items, setItems] = useState<EventDto[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true); // first page, initially
   const [loadingMore, setLoadingMore] = useState(false);
   const [failed, setFailed] = useState(false);
-  const busy = useRef(false); // ignore double clicks while a page is loading
+  const [dialog, setDialog] = useState<DialogState>(null);
+  const dialogCount = useRef(0);
+  // Bumped whenever the list is (re)started; older responses are dropped.
+  const generation = useRef(0);
 
-  const loadPage = useCallback(async (cursor: string | null) => {
-    if (busy.current) return;
-    busy.current = true;
-    const result = await listEvents(cursor ? { cursor } : {}).catch(() => null);
-    busy.current = false;
+  const query = useCallback(
+    (cursor: string | null) => ({
+      ...(cursor && { cursor }),
+      importance: importanceKey ? importanceKey.split(",") : [],
+      q: searchText,
+    }),
+    [importanceKey, searchText]
+  );
+
+  /** Loads the first page, replacing the list. */
+  const reload = useCallback(
+    async (showSpinner: boolean) => {
+      const mine = ++generation.current;
+      if (showSpinner) setLoading(true);
+      setFailed(false);
+      setLoadingMore(false);
+      const result = await listEvents(query(null)).catch(() => null);
+      if (mine !== generation.current) return;
+      if (result?.ok) {
+        setItems(result.data.items);
+        setNextCursor(result.data.nextCursor);
+      } else {
+        if (showSpinner) setItems([]);
+        setNextCursor(null);
+        setFailed(true);
+      }
+      setLoading(false);
+    },
+    [query]
+  );
+
+  useEffect(() => {
+    void Promise.resolve().then(() => reload(true));
+  }, [reload]);
+
+  const showMore = async () => {
+    if (loadingMore || nextCursor === null) return;
+    const mine = generation.current;
+    setLoadingMore(true);
+    setFailed(false);
+    const result = await listEvents(query(nextCursor)).catch(() => null);
+    if (mine !== generation.current) return;
     if (result?.ok) {
       setItems((prev) => [...prev, ...result.data.items]);
       setNextCursor(result.data.nextCursor);
-      setFailed(false);
     } else {
       setFailed(true);
     }
-    setLoading(false);
     setLoadingMore(false);
-  }, []);
-
-  useEffect(() => {
-    // The ref guard also makes React strict-mode's double effect harmless.
-    void Promise.resolve().then(() => loadPage(null));
-  }, [loadPage]);
-
-  const showMore = () => {
-    setLoadingMore(true);
-    setFailed(false);
-    void loadPage(nextCursor);
   };
 
-  const retryFirstPage = () => {
-    setLoading(true);
-    setFailed(false);
-    void loadPage(null);
-  };
+  const dialogs = (
+    <EventDialogs
+      dialog={dialog}
+      onChange={setDialog}
+      onChanged={() => void reload(false)}
+    />
+  );
 
   if (loading) {
     return (
@@ -77,7 +113,9 @@ export function EventList({ onSelectEvent }: Props) {
     return (
       <Alert
         severity="error"
-        action={<Button onClick={retryFirstPage}>{uk.list.retry}</Button>}
+        action={
+          <Button onClick={() => void reload(true)}>{uk.list.retry}</Button>
+        }
       >
         {uk.list.loadFailed}
       </Alert>
@@ -87,7 +125,9 @@ export function EventList({ onSelectEvent }: Props) {
   if (items.length === 0) {
     return (
       <Paper variant="outlined" sx={{ p: 4, textAlign: "center" }}>
-        <Typography color="text.secondary">{uk.list.empty}</Typography>
+        <Typography color="text.secondary">
+          {filtered ? uk.filters.noMatches : uk.list.empty}
+        </Typography>
       </Paper>
     );
   }
@@ -100,7 +140,10 @@ export function EventList({ onSelectEvent }: Props) {
             <EventListItem
               key={event.id}
               event={event}
-              onSelect={onSelectEvent}
+              onSelect={(selected) => {
+                dialogCount.current += 1;
+                setDialog(editingDialog(selected, dialogCount.current));
+              }}
             />
           ))}
         </List>
@@ -112,11 +155,16 @@ export function EventList({ onSelectEvent }: Props) {
       )}
       {nextCursor !== null && (
         <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
-          <Button variant="outlined" onClick={showMore} disabled={loadingMore}>
+          <Button
+            variant="outlined"
+            onClick={() => void showMore()}
+            disabled={loadingMore}
+          >
             {loadingMore ? uk.list.loading : uk.list.showMore}
           </Button>
         </Box>
       )}
+      {dialogs}
     </Box>
   );
 }
