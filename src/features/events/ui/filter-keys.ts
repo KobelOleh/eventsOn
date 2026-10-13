@@ -1,4 +1,8 @@
-import type { EventFilterState } from "../lib/view-state";
+import {
+  isNarrowing,
+  UNFILTERED,
+  type EventFilterState,
+} from "../lib/event-filter";
 
 /** Primitive keys derived from the filter, stable across renders until the
  *  filter really changes (safe as hook dependencies). */
@@ -11,13 +15,13 @@ export type FilterKeys = {
 
 const SEPARATOR = ",";
 
-export function deriveFilterKeys(filter?: EventFilterState): FilterKeys {
-  const importanceKey = filter?.importance.join(SEPARATOR) ?? "";
-  const searchText = filter?.q ?? "";
+export function deriveFilterKeys(
+  filter: EventFilterState = UNFILTERED
+): FilterKeys {
   return {
-    importanceKey,
-    searchText,
-    isFiltered: importanceKey !== "" || searchText !== "",
+    importanceKey: filter.importance.join(SEPARATOR),
+    searchText: filter.q,
+    isFiltered: isNarrowing(filter),
   };
 }
 

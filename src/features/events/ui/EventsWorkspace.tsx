@@ -4,9 +4,10 @@ import Box from "@mui/material/Box";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { uk } from "@/shared/i18n/uk";
 import { toLocalParts } from "../lib/datetime";
+import type { EventFilterState } from "../lib/event-filter";
 import {
   dateForModeSwitch,
   MODES,
@@ -14,8 +15,8 @@ import {
   VIEWS,
   withViewState,
   type CalendarMode,
-  type EventFilterState,
   type ViewState,
+  type ViewStatePatch,
 } from "../lib/view-state";
 import { EventCalendar } from "./EventCalendar";
 import { EventFilterBar } from "./EventFilterBar";
@@ -26,15 +27,10 @@ import { EventList } from "./EventList";
 export function EventsWorkspace() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { view, mode, date, importance, q } = parseViewState(searchParams);
-  const importanceKey = importance.join(",");
-  const filter = useMemo(
-    () => ({ importance: importanceKey ? importanceKey.split(",") : [], q }),
-    [importanceKey, q]
-  ) as EventFilterState;
+  const { view, mode, date, filter } = parseViewState(searchParams);
 
   const update = useCallback(
-    (patch: Partial<ViewState>, mode: "push" | "replace") => {
+    (patch: ViewStatePatch, mode: "push" | "replace") => {
       const query = withViewState(window.location.search, patch);
       const url = query ? `${pathname}?${query}` : pathname;
       // Native History API: Next syncs useSearchParams with it, with no
@@ -49,7 +45,7 @@ export function EventsWorkspace() {
   );
 
   const changeFilter = useCallback(
-    (patch: Partial<EventFilterState>) => update(patch, "replace"),
+    (patch: Partial<EventFilterState>) => update({ filter: patch }, "replace"),
     [update]
   );
 

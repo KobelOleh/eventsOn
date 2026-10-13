@@ -10,7 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { uk } from "@/shared/i18n/uk";
 import { listEvents } from "../actions";
 import type { EventDto } from "../lib/event-service";
-import type { EventFilterState } from "../lib/view-state";
+import type { EventFilterState } from "../lib/event-filter";
 import { useRegisterCreateEvent } from "./create-event";
 import {
   creatingDialog,

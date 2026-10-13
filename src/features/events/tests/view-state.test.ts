@@ -60,3 +60,22 @@ describe("clickedDateParts", () => {
     });
   });
 });
+
+describe("filter in the URL", () => {
+  it("reads the normalised Filter", () => {
+    expect(
+      parseViewState(params("importance=CRITICAL,x&q=%20a")).filter
+    ).toEqual({ importance: ["CRITICAL"], q: "a" });
+  });
+
+  it("merges a partial Filter patch and keeps unknown params", () => {
+    const next = new URLSearchParams(
+      withViewState("view=list&foo=1&q=a&importance=NORMAL", {
+        filter: { importance: [] },
+      })
+    );
+    expect(next.get("foo")).toBe("1");
+    expect(next.get("q")).toBe("a");
+    expect(next.has("importance")).toBe(false);
+  });
+});

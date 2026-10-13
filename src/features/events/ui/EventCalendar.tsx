@@ -22,7 +22,8 @@ import { uk } from "@/shared/i18n/uk";
 import { listEventsInRange } from "../actions";
 import { clickedDateParts, toLocalParts } from "../lib/datetime";
 import type { EventDto } from "../lib/event-service";
-import type { CalendarMode, EventFilterState } from "../lib/view-state";
+import type { EventFilterState } from "../lib/event-filter";
+import type { CalendarMode } from "../lib/view-state";
 import { useRegisterCreateEvent } from "./create-event";
 import {
   creatingDialog,

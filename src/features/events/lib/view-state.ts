@@ -1,7 +1,11 @@
 // URL search-param state of the events screen. Pure and client-safe.
 // Unknown params are always preserved.
 
-import { IMPORTANCES, type Importance } from "./schemas";
+import {
+  parseFilter,
+  writeFilter,
+  type EventFilterState,
+} from "./event-filter";
 
 export const VIEWS = ["calendar", "list"] as const;
 export type View = (typeof VIEWS)[number];
@@ -17,14 +21,14 @@ export type ViewState = {
   mode: CalendarMode;
   /** Browser-local "yyyy-mm-dd" the calendar is anchored on; null = today. */
   date: string | null;
-  /** Selected Importance levels (comma-separated in the URL); [] = all. */
-  importance: Importance[];
-  /** Search text; "" = no search. */
-  q: string;
+  /** The Owner's Filter, shared by both views. */
+  filter: EventFilterState;
 };
 
-/** The filter part of the state, as passed to both views. */
-export type EventFilterState = Pick<ViewState, "importance" | "q">;
+/** A change to the view state; `filter` may be partial. */
+export type ViewStatePatch = Partial<Omit<ViewState, "filter">> & {
+  filter?: Partial<EventFilterState>;
+};
 
 type SearchParamsLike = { get(name: string): string | null };
 
@@ -44,13 +48,11 @@ export function parseViewState(params: SearchParamsLike): ViewState {
   const view = params.get("view");
   const mode = params.get("mode");
   const date = params.get("date");
-  const selected = (params.get("importance") ?? "").split(",");
   return {
     view: VIEWS.find((v) => v === view) ?? DEFAULT_VIEW,
     mode: MODES.find((m) => m === mode) ?? DEFAULT_MODE,
     date: date !== null && isRealDate(date) ? date : null,
-    importance: IMPORTANCES.filter((level) => selected.includes(level)),
-    q: params.get("q") ?? "",
+    filter: parseFilter(params),
   };
 }
 
@@ -58,7 +60,7 @@ export function parseViewState(params: SearchParamsLike): ViewState {
  *  `view` is always written explicitly so the URL reflects the screen. */
 export function withViewState(
   current: URLSearchParams | string,
-  patch: Partial<ViewState>
+  patch: ViewStatePatch
 ): string {
   const next = new URLSearchParams(current);
   if (patch.view !== undefined) next.set("view", patch.view);
@@ -70,13 +72,8 @@ export function withViewState(
     if (patch.date === null) next.delete("date");
     else next.set("date", patch.date);
   }
-  if (patch.importance !== undefined) {
-    if (patch.importance.length === 0) next.delete("importance");
-    else next.set("importance", patch.importance.join(","));
-  }
-  if (patch.q !== undefined) {
-    if (patch.q === "") next.delete("q");
-    else next.set("q", patch.q);
+  if (patch.filter !== undefined) {
+    return writeFilter({ ...parseFilter(next), ...patch.filter }, next);
   }
   return next.toString();
 }

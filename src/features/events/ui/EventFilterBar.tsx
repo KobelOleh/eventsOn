@@ -9,8 +9,12 @@ import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import { useEffect, useRef, useState } from "react";
 import { uk } from "@/shared/i18n/uk";
-import { IMPORTANCES, type Importance } from "../lib/schemas";
-import type { EventFilterState } from "../lib/view-state";
+import {
+  IMPORTANCES,
+  MAX_SEARCH_LENGTH,
+  type Importance,
+} from "../lib/schemas";
+import { isNarrowing, type EventFilterState } from "../lib/event-filter";
 import { IMPORTANCE_COLORS } from "./importance";
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -44,7 +48,7 @@ export function EventFilterBar({ value, onChange }: Props) {
     return () => clearTimeout(id);
   }, [text, onChange]);
 
-  const filtered = value.importance.length > 0 || value.q !== "";
+  const filtered = isNarrowing(value);
 
   return (
     <Box
@@ -108,7 +112,7 @@ export function EventFilterBar({ value, onChange }: Props) {
         slotProps={{
           htmlInput: {
             "aria-label": uk.filters.searchLabel,
-            maxLength: 200,
+            maxLength: MAX_SEARCH_LENGTH,
           },
           input: {
             endAdornment: text ? (
