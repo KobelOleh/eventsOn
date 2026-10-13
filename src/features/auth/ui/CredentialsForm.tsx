@@ -69,6 +69,8 @@ function Field({
         ) : undefined
       }
       slotProps={{
+        // The helper text holds a Collapse (divs), which a <p> cannot contain.
+        formHelperText: { component: "div" },
         // Always-shrunk label: it can never overlap typed or autofilled text.
         inputLabel: { shrink: true },
         input: {
