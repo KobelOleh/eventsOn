@@ -28,13 +28,7 @@ import {
   type EventFilterState,
 } from "../lib/event-filter";
 import type { CalendarMode } from "../lib/view-state";
-import { useRegisterCreateEvent } from "./create-event";
-import {
-  creatingDialog,
-  editingDialog,
-  EventDialogs,
-  type DialogState,
-} from "./EventDialogs";
+import { useEventDialogs } from "./EventDialogs";
 import { presentationOf } from "./importance";
 import { CalendarGridSkeleton } from "./skeletons";
 import "@fullcalendar/react/skeleton.css";
@@ -106,8 +100,6 @@ export function EventCalendar({
   const calendarRef = useRef<CalendarRef>(null);
   // Server Actions run one at a time; only the newest request may win.
   const latestRequest = useRef(0);
-  const dialogCount = useRef(0);
-  const [dialog, setDialog] = useState<DialogState>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadedCount, setLoadedCount] = useState<number | null>(null);
@@ -160,28 +152,22 @@ export function EventCalendar({
     []
   );
 
-  const handleDateClick = useCallback((info: DateClickInfo) => {
-    dialogCount.current += 1;
-    const { date, time } = clickedDateParts(info.dateStr);
-    setDialog(creatingDialog(dialogCount.current, date, time));
-  }, []);
+  const refresh = () => calendarRef.current?.getApi().refetchEvents();
+  const { openCreate, openEdit, dialogs } = useEventDialogs(refresh);
 
-  useRegisterCreateEvent(
-    useCallback(() => {
-      dialogCount.current += 1;
-      setDialog(creatingDialog(dialogCount.current));
-    }, [])
+  const handleDateClick = useCallback(
+    (info: DateClickInfo) => {
+      const { date, time } = clickedDateParts(info.dateStr);
+      openCreate(date, time);
+    },
+    [openCreate]
   );
 
-  const handleEventClick = useCallback((info: EventClickInfo) => {
-    dialogCount.current += 1;
-    setDialog(
-      editingDialog(
-        info.event.extendedProps.dto as EventDto,
-        dialogCount.current
-      )
-    );
-  }, []);
+  const handleEventClick = useCallback(
+    (info: EventClickInfo) =>
+      openEdit(info.event.extendedProps.dto as EventDto),
+    [openEdit]
+  );
 
   const isEmpty = !loading && !loadFailed && loadedCount === 0;
   const emptyMessage = isEmpty
@@ -189,8 +175,6 @@ export function EventCalendar({
       ? uk.filters.noMatches
       : uk.events.emptyRange
     : null;
-
-  const refresh = () => calendarRef.current?.getApi().refetchEvents();
 
   return (
     <Box aria-label={uk.events.calendarLabel}>
@@ -242,7 +226,7 @@ export function EventCalendar({
       >
         {emptyMessage}
       </Typography>
-      <EventDialogs dialog={dialog} onChange={setDialog} onChanged={refresh} />
+      {dialogs}
     </Box>
   );
 }

@@ -1,13 +1,15 @@
 "use client";
 
+import { useCallback, useRef, useState } from "react";
 import { createEvent, deleteEvent, updateEvent } from "../actions";
 import { DEFAULT_TIME, toLocalParts } from "../lib/datetime";
 import type { EventDto } from "../lib/event-service";
 import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
+import { useRegisterCreateEvent } from "./create-event";
 import { EventDialog, type EventFormValues } from "./EventDialog";
 import { uk } from "@/shared/i18n/uk";
 
-export type DialogState = {
+type DialogState = {
   key: number;
   values: EventFormValues;
   /** Set when editing an existing Event. */
@@ -17,7 +19,7 @@ export type DialogState = {
 
 /** Dialog state for a new Event on `date` ("yyyy-mm-dd", default today) at
  *  `time` (default 09:00). */
-export function creatingDialog(
+function creatingDialog(
   key: number,
   date: string = toLocalParts(new Date().toISOString()).date,
   time: string = DEFAULT_TIME
@@ -29,7 +31,7 @@ export function creatingDialog(
 }
 
 /** Dialog state for editing `event` (`key` must be fresh per opening). */
-export function editingDialog(event: EventDto, key: number): DialogState {
+function editingDialog(event: EventDto, key: number): DialogState {
   const { date, time } = toLocalParts(event.startsAt);
   return {
     key,
@@ -51,8 +53,8 @@ type Props = {
   onChanged: () => void;
 };
 
-/** Create/edit dialog plus delete confirmation, shared by both views. */
-export function EventDialogs({ dialog, onChange, onChanged }: Props) {
+/** Create/edit dialog plus delete confirmation. */
+function EventDialogs({ dialog, onChange, onChanged }: Props) {
   return (
     <>
       {dialog && (
@@ -98,4 +100,29 @@ export function EventDialogs({ dialog, onChange, onChanged }: Props) {
       )}
     </>
   );
+}
+
+/** Dialog state shared by both views. `openCreate` defaults to today at
+ *  09:00; `dialogs` is the element to render; `onChanged` runs after an
+ *  Event is created, saved or deleted. Also serves the header's create button. */
+export function useEventDialogs(onChanged: () => void) {
+  const count = useRef(0);
+  const [dialog, setDialog] = useState<DialogState>(null);
+
+  const openCreate = useCallback((date?: string, time?: string) => {
+    count.current += 1;
+    setDialog(creatingDialog(count.current, date, time));
+  }, []);
+
+  const openEdit = useCallback((event: EventDto) => {
+    count.current += 1;
+    setDialog(editingDialog(event, count.current));
+  }, []);
+
+  useRegisterCreateEvent(useCallback(() => openCreate(), [openCreate]));
+
+  const dialogs = (
+    <EventDialogs dialog={dialog} onChange={setDialog} onChanged={onChanged} />
+  );
+  return { openCreate, openEdit, dialogs };
 }

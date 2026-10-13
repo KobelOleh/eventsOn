@@ -11,13 +11,7 @@ import { uk } from "@/shared/i18n/uk";
 import { listEvents } from "../actions";
 import type { EventDto } from "../lib/event-service";
 import { isNarrowing, type EventFilterState } from "../lib/event-filter";
-import { useRegisterCreateEvent } from "./create-event";
-import {
-  creatingDialog,
-  editingDialog,
-  EventDialogs,
-  type DialogState,
-} from "./EventDialogs";
+import { useEventDialogs } from "./EventDialogs";
 import { EventListItem } from "./EventListItem";
 import { EventListSkeleton } from "./skeletons";
 
@@ -34,8 +28,6 @@ export function EventList({ filter }: Props) {
   const [loading, setLoading] = useState(true); // first page, initially
   const [loadingMore, setLoadingMore] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [dialog, setDialog] = useState<DialogState>(null);
-  const dialogCount = useRef(0);
   // Bumped whenever the list is (re)started; older responses are dropped.
   const generation = useRef(0);
 
@@ -90,20 +82,7 @@ export function EventList({ filter }: Props) {
     setLoadingMore(false);
   };
 
-  useRegisterCreateEvent(
-    useCallback(() => {
-      dialogCount.current += 1;
-      setDialog(creatingDialog(dialogCount.current));
-    }, [])
-  );
-
-  const dialogs = (
-    <EventDialogs
-      dialog={dialog}
-      onChange={setDialog}
-      onChanged={() => void reload(false)}
-    />
-  );
+  const { openEdit, dialogs } = useEventDialogs(() => void reload(false));
 
   if (loading) {
     return (
@@ -148,14 +127,7 @@ export function EventList({ filter }: Props) {
       <Paper variant="outlined">
         <List disablePadding>
           {items.map((event) => (
-            <EventListItem
-              key={event.id}
-              event={event}
-              onSelect={(selected) => {
-                dialogCount.current += 1;
-                setDialog(editingDialog(selected, dialogCount.current));
-              }}
-            />
+            <EventListItem key={event.id} event={event} onSelect={openEdit} />
           ))}
         </List>
       </Paper>
