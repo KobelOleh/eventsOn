@@ -1,0 +1,3 @@
+# Feature modules with action → service → repository layers
+
+Code is organised as feature modules under `src/features/<name>` (`auth`, `events`) plus `src/shared`. Each module exposes a small public surface at its root (`index.ts`, `actions.ts`) and hides implementation in subfolders (`lib/`, `ui/`, `tests/`). Inside a feature, a Server Action only checks the session and validates input, a service holds business rules and knows nothing about Next, and a repository is the only place that touches Prisma. Module boundaries and import cycles are enforced by dependency-cruiser, so the structure cannot erode silently. We chose this over a flat `app/` + `lib/` layout so a new feature (e.g. reminders, sharing) is a new folder, not edits across the codebase.
