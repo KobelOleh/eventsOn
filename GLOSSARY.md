@@ -16,6 +16,14 @@ _Avoid_: Author, creator, member
 How much an Event matters to its Owner: **Normal**, **Important** or **Critical**. Shown in Ukrainian as «звичайна», «важлива», «критична».
 _Avoid_: Priority, severity, level
 
+**Filter**:
+The Owner's narrowing of the Events shown, by selected Importance levels and/or a Keyword search. Shared by the Calendar view and the List view. A Filter with nothing selected and no Keyword search is **Unfiltered** and shows every Event.
+_Avoid_: Query, criteria, search params
+
+**Keyword search**:
+The part of a Filter that keeps only Events whose title or description contains the typed word.
+_Avoid_: Search query, text filter
+
 **Calendar view**:
 Showing the Owner's Events placed on a month, week or day grid.
 
