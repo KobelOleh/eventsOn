@@ -3,6 +3,7 @@
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Collapse from "@mui/material/Collapse";
 import InputAdornment from "@mui/material/InputAdornment";
 import Link from "@mui/material/Link";
 import Paper from "@mui/material/Paper";
@@ -50,7 +51,14 @@ function Field({
       margin="normal"
       required
       error={Boolean(errors)}
-      helperText={errors?.[0]}
+      // Slides in instead of popping in, so the fields below glide down.
+      helperText={
+        errors ? (
+          <Collapse in appear>
+            {errors[0]}
+          </Collapse>
+        ) : undefined
+      }
       slotProps={{
         // Always-shrunk label: it can never overlap typed or autofilled text.
         inputLabel: { shrink: true },
@@ -107,7 +115,9 @@ export function CredentialsForm({
       strong
       sx={{
         display: "flex",
-        alignItems: "center",
+        // Top-anchored: an error growing the card must not re-centre it and
+        // move the title and fields that are already on screen.
+        alignItems: "flex-start",
         justifyContent: "center",
         p: 2,
         position: "relative",
@@ -122,7 +132,7 @@ export function CredentialsForm({
           width: "100%",
           maxWidth: 420,
           p: { xs: 3, sm: 5 },
-          mt: { xs: 6, sm: 0 },
+          mt: { xs: 6, sm: "12vh" },
           boxShadow: "0 24px 70px rgba(70,50,160,0.18)",
           border: 1,
           borderColor: "divider",
@@ -142,11 +152,11 @@ export function CredentialsForm({
             {notice}
           </Alert>
         )}
-        {genericError && (
+        <Collapse in={Boolean(genericError)} mountOnEnter unmountOnExit>
           <Alert severity="error" sx={{ mb: 2 }}>
             {genericError}
           </Alert>
-        )}
+        </Collapse>
         <Box component="form" action={submit} noValidate>
           <Field
             name="email"

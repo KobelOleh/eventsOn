@@ -34,9 +34,10 @@ const channel = (name: string) => `var(--mui-palette-${name}Channel)`;
 const calendarVariables: NonNullable<ThemeOptions["components"]> = {
   MuiCssBaseline: {
     styleOverrides: {
-      // Reserve the scrollbar's width so the layout does not shift when it
-      // appears (a taller view) or when a dialog locks the page scroll.
-      html: { scrollbarGutter: "stable" },
+      // Always show the scrollbar track so the layout does not shift when
+      // the page becomes taller or shorter than the window. (scrollbar-gutter
+      // is not honoured for the root in every Chromium build.)
+      html: { overflowY: "scroll" },
       // Native date/time inputs open their picker from a click.
       'input[type="date"], input[type="time"], ::-webkit-calendar-picker-indicator':
         { cursor: "pointer" },
@@ -94,6 +95,9 @@ export const theme = createTheme({
   },
   components: {
     ...calendarVariables,
+    // Locking the page scroll hides the scrollbar track and shifts the page
+    // sideways each time a dialog or menu opens.
+    MuiModal: { defaultProps: { disableScrollLock: true } },
     MuiButton: {
       defaultProps: { disableElevation: true },
       styleOverrides: {
