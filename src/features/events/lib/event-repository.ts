@@ -27,6 +27,15 @@ const select = {
   importance: true,
 } as const;
 
+/** Prisma's P2025: an update or delete matched no record. */
+function isRecordNotFound(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: unknown }).code === "P2025"
+  );
+}
+
 /** Prisma's `contains` does NOT escape LIKE wildcards (verified by tests), so
  *  `\`, `%` and `_` are escaped here to match literally (Postgres' default
  *  LIKE escape character is the backslash). */
@@ -90,18 +99,23 @@ export const eventRepository = {
     });
   },
 
-  /** Null when the Event does not exist or belongs to another Owner. */
+  /** Null when the Event does not exist or belongs to another Owner. One
+   *  query, so a concurrent delete cannot slip in between write and read. */
   async update(
     ownerId: string,
     id: string,
     data: NewEvent
   ): Promise<EventRecord | null> {
-    const { count } = await prisma.event.updateMany({
-      where: { id, ownerId },
-      data,
-    });
-    if (count === 0) return null;
-    return prisma.event.findFirst({ where: { id, ownerId }, select });
+    try {
+      return await prisma.event.update({
+        where: { id, ownerId },
+        data,
+        select,
+      });
+    } catch (error) {
+      if (isRecordNotFound(error)) return null;
+      throw error;
+    }
   },
 
   /** Permanent. False when nothing of this Owner matched. */

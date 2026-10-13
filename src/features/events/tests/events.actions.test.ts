@@ -15,6 +15,7 @@ import {
   listEventsInRange,
   updateEvent,
 } from "../actions";
+import * as actions from "../actions";
 
 async function newUser(email: string): Promise<string> {
   const user = await prisma.user.create({ data: { email } });
@@ -515,5 +516,17 @@ describe("events Server Actions", () => {
         });
       }
     });
+  });
+
+  it("every exported Server Action rejects an anonymous caller", async () => {
+    vi.mocked(requireOwnerId).mockRejectedValue(new Error("UNAUTHORIZED"));
+    const exported = Object.entries(actions);
+    expect(exported.length).toBeGreaterThan(0);
+    for (const [name, action] of exported) {
+      await expect(
+        (action as (...args: unknown[]) => Promise<unknown>)(),
+        name
+      ).rejects.toThrow("UNAUTHORIZED");
+    }
   });
 });
