@@ -15,19 +15,20 @@ import { login, register } from "../actions";
 import { createAuthAdapter } from "../lib/adapter";
 import { resolveEmailConflict } from "../lib/conflict-policy";
 import { createAuthService } from "../lib/auth-service";
+import { createPasswordSignIn } from "../lib/password-sign-in";
 import { auth, signInWithPassword } from "../lib/nextauth";
 import { requireOwnerId, UnauthorizedError } from "../lib/session";
 
-// Stands in for the Credentials provider: Auth.js refuses credentials that
-// do not verify.
+// Stands in for Auth.js: starting a session runs the Credentials provider's
+// `authorize` once and lets its refusal reach the caller.
 beforeEach(() => {
-  vi.mocked(signInWithPassword).mockImplementation(async (email, password) => {
-    const verified = await createAuthService().verifyCredentials({
-      email,
-      password,
-    });
-    return verified.ok;
-  });
+  const passwordSignIn = createPasswordSignIn(
+    createAuthService(),
+    async (credentials) => {
+      await passwordSignIn.authorize(credentials);
+    }
+  );
+  vi.mocked(signInWithPassword).mockImplementation(passwordSignIn.signIn);
 });
 
 describe("register and login", () => {
