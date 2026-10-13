@@ -187,6 +187,13 @@ export function EventCalendar({
     );
   }, []);
 
+  const isEmpty = !loading && !loadFailed && loadedCount === 0;
+  const emptyMessage = isEmpty
+    ? isFiltered
+      ? uk.filters.noMatches
+      : uk.events.emptyRange
+    : null;
+
   const refresh = () => calendarRef.current?.getApi().refetchEvents();
 
   return (
@@ -205,8 +212,7 @@ export function EventCalendar({
       </Box>
       {/* Dates are formatted by the browser's ICU; the server's output differs
           slightly, so the grid is rendered on the client only. */}
-      {!isClient && <CalendarGridSkeleton />}
-      {isClient && (
+      {isClient ? (
         <Box
           // Day/time cells open the create dialog and events open the edit
           // dialog, so the whole grid reads as clickable (headers excepted).
@@ -229,6 +235,8 @@ export function EventCalendar({
             eventClick={handleEventClick}
           />
         </Box>
+      ) : (
+        <CalendarGridSkeleton />
       )}
       {/* The line is always reserved so the empty message cannot push the
           page down when a range loads with no Events. */}
@@ -236,11 +244,7 @@ export function EventCalendar({
         color="text.secondary"
         sx={{ mt: 2, minHeight: 24, textAlign: "center" }}
       >
-        {!loading && !loadFailed && loadedCount === 0
-          ? isFiltered
-            ? uk.filters.noMatches
-            : uk.events.emptyRange
-          : null}
+        {emptyMessage}
       </Typography>
       <EventDialogs dialog={dialog} onChange={setDialog} onChanged={refresh} />
     </Box>

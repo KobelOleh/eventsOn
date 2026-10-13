@@ -7,21 +7,29 @@ import { uk } from "@/shared/i18n/uk";
 
 /** Height of a List row (two text lines), so rows do not jump when loaded. */
 const ROW_HEIGHT = 72;
+const ROWS = 5;
+
+/** A rounded-pill placeholder, sized to the control it stands in for. */
+function PillSkeleton({ width, height }: { width: number; height: number }) {
+  return (
+    <Skeleton
+      variant="rounded"
+      width={width}
+      height={height}
+      sx={{ borderRadius: 999 }}
+    />
+  );
+}
 
 /** Placeholder rows shaped like EventListItem. */
-export function EventListSkeleton({ rows = 5 }: { rows?: number }) {
+export function EventListSkeleton() {
   return (
-    <Paper
-      variant="outlined"
-      role="status"
-      aria-label={uk.list.loading}
-      aria-busy
-    >
+    <Paper variant="outlined" role="status" aria-label={uk.list.loading}>
       <List disablePadding>
-        {Array.from({ length: rows }, (_, i) => (
+        {Array.from({ length: ROWS }, (_, i) => (
           <ListItem
             key={i}
-            divider={i < rows - 1}
+            divider={i < ROWS - 1}
             sx={{ height: ROW_HEIGHT, gap: 2, px: 2 }}
           >
             <Skeleton
@@ -34,12 +42,7 @@ export function EventListSkeleton({ rows = 5 }: { rows?: number }) {
               <Skeleton width="45%" height={24} />
               <Skeleton width="30%" height={20} />
             </Box>
-            <Skeleton
-              variant="rounded"
-              width={76}
-              height={24}
-              sx={{ borderRadius: 999 }}
-            />
+            <PillSkeleton width={76} height={24} />
           </ListItem>
         ))}
       </List>
@@ -53,7 +56,6 @@ export function CalendarGridSkeleton() {
     <Box
       role="status"
       aria-label={uk.events.loading}
-      aria-busy
       sx={{ display: "flex", flexDirection: "column", gap: 2 }}
     >
       <Box
@@ -64,12 +66,7 @@ export function CalendarGridSkeleton() {
         }}
       >
         <Skeleton width={160} height={36} />
-        <Skeleton
-          variant="rounded"
-          width={150}
-          height={36}
-          sx={{ borderRadius: 999 }}
-        />
+        <PillSkeleton width={150} height={36} />
       </Box>
       <Skeleton variant="rounded" height={520} />
     </Box>
@@ -81,32 +78,12 @@ export function EventsWorkspaceSkeleton() {
   return (
     <Box>
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 2 }}>
-        <Skeleton
-          variant="rounded"
-          width={190}
-          height={38}
-          sx={{ borderRadius: 999 }}
-        />
-        <Skeleton
-          variant="rounded"
-          width={230}
-          height={38}
-          sx={{ borderRadius: 999 }}
-        />
+        <PillSkeleton width={190} height={38} />
+        <PillSkeleton width={230} height={38} />
       </Box>
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 2 }}>
-        <Skeleton
-          variant="rounded"
-          width={330}
-          height={32}
-          sx={{ borderRadius: 999 }}
-        />
-        <Skeleton
-          variant="rounded"
-          width={260}
-          height={40}
-          sx={{ borderRadius: 999 }}
-        />
+        <PillSkeleton width={330} height={32} />
+        <PillSkeleton width={260} height={40} />
       </Box>
       <CalendarGridSkeleton />
     </Box>

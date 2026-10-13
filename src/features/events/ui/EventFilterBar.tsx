@@ -136,8 +136,6 @@ export function EventFilterBar({ value, onChange }: Props) {
           first filter is applied. */}
       <Button
         size="small"
-        tabIndex={filtered ? 0 : -1}
-        aria-hidden={!filtered}
         sx={{ visibility: filtered ? "visible" : "hidden" }}
         onClick={() => {
           setText("");
