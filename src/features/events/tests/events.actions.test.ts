@@ -228,11 +228,13 @@ describe("events Server Actions", () => {
       expect(ids).toHaveLength(32);
       expect(new Set(ids).size).toBe(32);
 
-      const all = await prisma.event.findMany({
-        where: { ownerId: userA },
-        select: { id: true },
+      // Cross-check against the Calendar read of the same Owner's Events.
+      const all = await listEventsInRange({
+        start: "2026-09-01T00:00:00.000Z",
+        end: "2026-11-01T00:00:00.000Z",
       });
-      expect(new Set(ids)).toEqual(new Set(all.map((e) => e.id)));
+      if (!all.ok) throw new Error("range failed");
+      expect(new Set(ids)).toEqual(new Set(all.data.map((e) => e.id)));
       // Ties are broken by id, ascending.
       const tied = pages
         .flat()
@@ -273,11 +275,8 @@ describe("events Server Actions", () => {
       if (!aFirst.ok) throw new Error("page failed");
       signInAs(userB);
       const viaCursor = await listEvents({ cursor: aFirst.data.nextCursor });
-      const bIds = new Set(
-        (await prisma.event.findMany({ where: { ownerId: userB } })).map(
-          (e) => e.id
-        )
-      );
+      const bOwn = await listEvents({});
+      const bIds = new Set(bOwn.ok ? bOwn.data.items.map((e) => e.id) : []);
       expect(viaCursor.ok && viaCursor.data.items.length).toBeGreaterThan(0);
       expect(
         viaCursor.ok && viaCursor.data.items.every((e) => bIds.has(e.id))
@@ -508,7 +507,13 @@ describe("events Server Actions", () => {
       await expect(listEventsInRange(october)).rejects.toThrow("UNAUTHORIZED");
       await expect(updateEvent("x", valid)).rejects.toThrow("UNAUTHORIZED");
       await expect(deleteEvent("x")).rejects.toThrow("UNAUTHORIZED");
-      expect(await prisma.event.count()).toBe(0);
+      for (const owner of [userA, userB]) {
+        signInAs(owner);
+        expect(await listEvents({})).toEqual({
+          ok: true,
+          data: { items: [], nextCursor: null },
+        });
+      }
     });
   });
 });

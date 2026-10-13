@@ -14,8 +14,34 @@ describe("parseEnv", () => {
   });
 
   it("names every missing variable in the error message", () => {
-    expect(() => parseEnv({})).toThrowError(
-      /DATABASE_URL[\s\S]*AUTH_SECRET[\s\S]*AUTH_GOOGLE_ID[\s\S]*AUTH_GOOGLE_SECRET/
+    expect(() => parseEnv({})).toThrowError(/DATABASE_URL[\s\S]*AUTH_SECRET/);
+  });
+
+  it("starts without Google credentials; empty values count as unset", () => {
+    const base = {
+      DATABASE_URL: valid.DATABASE_URL,
+      AUTH_SECRET: valid.AUTH_SECRET,
+    };
+    expect(parseEnv(base).AUTH_GOOGLE_ID).toBeUndefined();
+    const env = parseEnv({
+      ...base,
+      AUTH_GOOGLE_ID: "",
+      AUTH_GOOGLE_SECRET: "",
+    });
+    expect(env.AUTH_GOOGLE_ID).toBeUndefined();
+    expect(env.AUTH_GOOGLE_SECRET).toBeUndefined();
+  });
+
+  it("requires Google id and secret together", () => {
+    const base = {
+      DATABASE_URL: valid.DATABASE_URL,
+      AUTH_SECRET: valid.AUTH_SECRET,
+    };
+    expect(() => parseEnv({ ...base, AUTH_GOOGLE_ID: "id" })).toThrowError(
+      /AUTH_GOOGLE_SECRET/
+    );
+    expect(() => parseEnv({ ...base, AUTH_GOOGLE_SECRET: "s" })).toThrowError(
+      /AUTH_GOOGLE_ID/
     );
   });
 

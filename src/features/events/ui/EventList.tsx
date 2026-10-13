@@ -13,6 +13,7 @@ import { listEvents } from "../actions";
 import type { EventDto } from "../lib/event-service";
 import type { EventFilterState } from "../lib/view-state";
 import { EventDialogs, editingDialog, type DialogState } from "./EventDialogs";
+import { deriveFilterKeys, toFilterQuery } from "./filter-keys";
 import { EventListItem } from "./EventListItem";
 
 type Props = {
@@ -23,9 +24,7 @@ type Props = {
 /** The Owner's Events as a paged list, earliest first, 20 at a time.
  *  Clicking a row opens the edit dialog; the list reloads after a change. */
 export function EventList({ filter }: Props) {
-  const importanceKey = filter?.importance.join(",") ?? "";
-  const searchText = filter?.q ?? "";
-  const filtered = importanceKey !== "" || searchText !== "";
+  const { importanceKey, searchText, isFiltered } = deriveFilterKeys(filter);
 
   const [items, setItems] = useState<EventDto[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -40,8 +39,7 @@ export function EventList({ filter }: Props) {
   const query = useCallback(
     (cursor: string | null) => ({
       ...(cursor && { cursor }),
-      importance: importanceKey ? importanceKey.split(",") : [],
-      q: searchText,
+      ...toFilterQuery({ importanceKey, searchText }),
     }),
     [importanceKey, searchText]
   );
@@ -126,7 +124,7 @@ export function EventList({ filter }: Props) {
     return (
       <Paper variant="outlined" sx={{ p: 4, textAlign: "center" }}>
         <Typography color="text.secondary">
-          {filtered ? uk.filters.noMatches : uk.list.empty}
+          {isFiltered ? uk.filters.noMatches : uk.list.empty}
         </Typography>
       </Paper>
     );

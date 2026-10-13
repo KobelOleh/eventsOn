@@ -6,3 +6,6 @@ export const IMPORTANCE_COLORS: Record<Importance, string> = {
   IMPORTANT: "#b45309",
   CRITICAL: "#c62828",
 };
+
+/** Text colour on an Importance-coloured background. */
+export const IMPORTANCE_TEXT_COLOR = "#ffffff";

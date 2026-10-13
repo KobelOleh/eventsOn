@@ -1,3 +1,4 @@
+import { z, type ZodType } from "zod";
 import { fail, fieldErrorsOf, ok, type Result } from "@/shared/result";
 import {
   eventRepository,
@@ -35,22 +36,29 @@ export function toDto(record: EventRecord): EventDto {
   };
 }
 
+/** safeParse, or a VALIDATION failure carrying per-field errors. */
+function parseOrFail<S extends ZodType>(
+  schema: S,
+  input: unknown
+): Result<z.output<S>> {
+  const parsed = schema.safeParse(input);
+  return parsed.success
+    ? ok(parsed.data)
+    : fail("VALIDATION", fieldErrorsOf(parsed.error.issues));
+}
+
 export function createEventService(repo: EventRepository = eventRepository) {
   return {
     async create(ownerId: string, input: unknown): Promise<Result<EventDto>> {
-      const parsed = eventFieldsSchema.safeParse(input);
-      if (!parsed.success) {
-        return fail("VALIDATION", fieldErrorsOf(parsed.error.issues));
-      }
+      const parsed = parseOrFail(eventFieldsSchema, input);
+      if (!parsed.ok) return parsed;
       return ok(toDto(await repo.create(ownerId, parsed.data)));
     },
 
     /** List-view query: one page by keyset cursor, earliest first. */
     async list(ownerId: string, input: unknown): Promise<Result<EventPage>> {
-      const parsed = listQuerySchema.safeParse(input);
-      if (!parsed.success) {
-        return fail("VALIDATION", fieldErrorsOf(parsed.error.issues));
-      }
+      const parsed = parseOrFail(listQuerySchema, input);
+      if (!parsed.ok) return parsed;
       // One extra row tells us whether another page exists.
       const records = await repo.findPage(
         ownerId,
@@ -74,10 +82,8 @@ export function createEventService(repo: EventRepository = eventRepository) {
       id: unknown,
       input: unknown
     ): Promise<Result<EventDto>> {
-      const parsed = eventFieldsSchema.safeParse(input);
-      if (!parsed.success) {
-        return fail("VALIDATION", fieldErrorsOf(parsed.error.issues));
-      }
+      const parsed = parseOrFail(eventFieldsSchema, input);
+      if (!parsed.ok) return parsed;
       if (typeof id !== "string") return fail("NOT_FOUND");
       const record = await repo.update(ownerId, id, parsed.data);
       return record ? ok(toDto(record)) : fail("NOT_FOUND");
@@ -97,10 +103,8 @@ export function createEventService(repo: EventRepository = eventRepository) {
       ownerId: string,
       input: unknown
     ): Promise<Result<EventDto[]>> {
-      const parsed = rangeSchema.safeParse(input);
-      if (!parsed.success) {
-        return fail("VALIDATION", fieldErrorsOf(parsed.error.issues));
-      }
+      const parsed = parseOrFail(rangeSchema, input);
+      if (!parsed.ok) return parsed;
       const { start, end, filter } = parsed.data;
       const records = await repo.findStartingBetween(
         ownerId,
