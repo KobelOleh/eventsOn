@@ -37,6 +37,54 @@ export type EventFields = z.output<typeof eventFieldsSchema>;
 /** Longest range one request may ask for (a 6-week month grid is 42 days). */
 export const MAX_RANGE_DAYS = 100;
 
+/** Events per List view page. */
+export const PAGE_SIZE = 20;
+
+/** Keyset position: the last (startsAt, id) the client has already seen. */
+export type Cursor = { startsAt: Date; id: string };
+
+/** The cursor is opaque to clients: base64url of JSON [startsAt ISO, id]. */
+export function encodeCursor(cursor: Cursor): string {
+  return Buffer.from(
+    JSON.stringify([cursor.startsAt.toISOString(), cursor.id])
+  ).toString("base64url");
+}
+
+function decodeCursor(raw: string): Cursor | null {
+  try {
+    const parsed: unknown = JSON.parse(
+      Buffer.from(raw, "base64url").toString("utf8")
+    );
+    if (!Array.isArray(parsed) || parsed.length !== 2) return null;
+    const [iso, id] = parsed;
+    if (typeof iso !== "string" || typeof id !== "string" || !id) return null;
+    const startsAt = new Date(iso);
+    if (Number.isNaN(startsAt.getTime())) return null;
+    return { startsAt, id };
+  } catch {
+    return null;
+  }
+}
+
+/** List view request. Filters (importance, search) are added here later. */
+export const listQuerySchema = z.object({
+  cursor: z
+    .string({ error: e.cursorInvalid })
+    .optional()
+    .transform((raw, ctx): Cursor | undefined => {
+      if (raw === undefined) return undefined;
+      const decoded = decodeCursor(raw);
+      if (!decoded) {
+        ctx.issues.push({
+          code: "custom",
+          message: e.cursorInvalid,
+          input: raw,
+        });
+      }
+      return decoded ?? undefined;
+    }),
+});
+
 /** Half-open range [start, end) of start times. */
 export const rangeSchema = z
   .object({ start: instant(e.rangeInvalid), end: instant(e.rangeInvalid) })

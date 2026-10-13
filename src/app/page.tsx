@@ -2,7 +2,8 @@ import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
 import { getSessionUser, SignOutButton } from "@/features/auth";
-import { EventCalendar } from "@/features/events";
+import { Suspense } from "react";
+import { EventsWorkspace } from "@/features/events";
 import { uk } from "@/shared/i18n/uk";
 
 export default async function HomePage() {
@@ -26,7 +27,9 @@ export default async function HomePage() {
           <SignOutButton />
         </Box>
       </Box>
-      <EventCalendar />
+      <Suspense>
+        <EventsWorkspace />
+      </Suspense>
     </Container>
   );
 }

@@ -31,6 +31,29 @@ export const eventRepository = {
     return prisma.event.create({ data: { ...data, ownerId }, select });
   },
 
+  /** Keyset page ordered by (startsAt, id): up to `take` Events strictly
+   *  after `after` (or from the beginning when absent). */
+  findPage(
+    ownerId: string,
+    after: { startsAt: Date; id: string } | undefined,
+    take: number
+  ): Promise<EventRecord[]> {
+    return prisma.event.findMany({
+      where: {
+        ownerId,
+        ...(after && {
+          OR: [
+            { startsAt: { gt: after.startsAt } },
+            { startsAt: after.startsAt, id: { gt: after.id } },
+          ],
+        }),
+      },
+      orderBy: [{ startsAt: "asc" }, { id: "asc" }],
+      take,
+      select,
+    });
+  },
+
   /** Events whose start lies in [start, end), earliest first. */
   findStartingBetween(
     ownerId: string,
