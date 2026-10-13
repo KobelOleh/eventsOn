@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { uk } from "@/shared/i18n/uk";
-import { IMPORTANCES, MAX_SEARCH_LENGTH } from "./constants";
+import { IMPORTANCES, MAX_RANGE_DAYS, MAX_SEARCH_LENGTH } from "./constants";
+import { decodeCursor, type Cursor } from "./cursor";
 
 const e = uk.events.errors;
 
@@ -31,38 +32,6 @@ export const eventFieldsSchema = z.object({
 });
 
 export type EventFields = z.output<typeof eventFieldsSchema>;
-
-/** Longest range one request may ask for (a 6-week month grid is 42 days). */
-export const MAX_RANGE_DAYS = 100;
-
-/** Events per List view page. */
-export const PAGE_SIZE = 20;
-
-/** Keyset position: the last (startsAt, id) the client has already seen. */
-export type Cursor = { startsAt: Date; id: string };
-
-/** The cursor is opaque to clients: base64url of JSON [startsAt ISO, id]. */
-export function encodeCursor(cursor: Cursor): string {
-  return Buffer.from(
-    JSON.stringify([cursor.startsAt.toISOString(), cursor.id])
-  ).toString("base64url");
-}
-
-function decodeCursor(raw: string): Cursor | null {
-  try {
-    const parsed: unknown = JSON.parse(
-      Buffer.from(raw, "base64url").toString("utf8")
-    );
-    if (!Array.isArray(parsed) || parsed.length !== 2) return null;
-    const [iso, id] = parsed;
-    if (typeof iso !== "string" || typeof id !== "string" || !id) return null;
-    const startsAt = new Date(iso);
-    if (Number.isNaN(startsAt.getTime())) return null;
-    return { startsAt, id };
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Filter and search shared by the Calendar range query and the List query.

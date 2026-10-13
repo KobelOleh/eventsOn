@@ -5,13 +5,9 @@ import {
   type EventRecord,
   type EventRepository,
 } from "./event-repository";
-import {
-  encodeCursor,
-  eventFieldsSchema,
-  listQuerySchema,
-  PAGE_SIZE,
-  rangeSchema,
-} from "./schemas";
+import { PAGE_SIZE } from "./constants";
+import { encodeCursor } from "./cursor";
+import { eventFieldsSchema, listQuerySchema, rangeSchema } from "./schemas";
 import type { EventDto, EventPage } from "./event-dto";
 
 export function toDto(record: EventRecord): EventDto {

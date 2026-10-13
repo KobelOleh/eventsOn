@@ -4,6 +4,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../lib/nextauth", () => ({
   auth: vi.fn(),
   signIn: vi.fn(),
+  signInWithPassword: vi.fn(),
   signOut: vi.fn(),
   handlers: {},
 }));
@@ -13,8 +14,21 @@ import { uk } from "@/shared/i18n/uk";
 import { login, register } from "../actions";
 import { createAuthAdapter } from "../lib/adapter";
 import { resolveEmailConflict } from "../lib/conflict-policy";
-import { auth } from "../lib/nextauth";
+import { createAuthService } from "../lib/auth-service";
+import { auth, signInWithPassword } from "../lib/nextauth";
 import { requireOwnerId, UnauthorizedError } from "../lib/session";
+
+// Stands in for the Credentials provider: Auth.js refuses credentials that
+// do not verify.
+beforeEach(() => {
+  vi.mocked(signInWithPassword).mockImplementation(async (email, password) => {
+    const verified = await createAuthService().verifyCredentials({
+      email,
+      password,
+    });
+    return verified.ok;
+  });
+});
 
 describe("register and login", () => {
   beforeEach(async () => {

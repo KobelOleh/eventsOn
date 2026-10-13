@@ -1,6 +1,7 @@
 import { prisma } from "@/shared/db";
 import type { Prisma } from "@/generated/prisma/client";
 import type { Importance } from "./constants";
+import type { Cursor } from "./cursor";
 import type { EventFilter } from "./schemas";
 
 export type EventRecord = {
@@ -68,7 +69,7 @@ export const eventRepository = {
    *  after `after` (or from the beginning when absent). */
   findPage(
     ownerId: string,
-    after: { startsAt: Date; id: string } | undefined,
+    after: Cursor | undefined,
     take: number,
     filter: EventFilter
   ): Promise<EventRecord[]> {
