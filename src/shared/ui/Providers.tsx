@@ -2,17 +2,19 @@
 
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 import CssBaseline from "@mui/material/CssBaseline";
-import { ThemeProvider } from "@mui/material/styles";
-import type { ReactNode } from "react";
-import { theme } from "./theme";
+import { Suspense, type ReactNode } from "react";
+import { PrototypeThemeProvider } from "./prototype/PrototypeThemeProvider";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <AppRouterCacheProvider>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        {children}
-      </ThemeProvider>
+      {/* PROTOTYPE: theme follows ?variant= (was the single ./theme). */}
+      <Suspense fallback={null}>
+        <PrototypeThemeProvider>
+          <CssBaseline />
+          {children}
+        </PrototypeThemeProvider>
+      </Suspense>
     </AppRouterCacheProvider>
   );
 }

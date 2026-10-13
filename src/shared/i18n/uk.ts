@@ -19,6 +19,13 @@ export const uk = {
     register: "Зареєструватися",
     signOut: "Вийти",
     signInWithGoogle: "Увійти через Google",
+    or: "або",
+    loginSubtitle: "Увійдіть, щоб побачити свої події.",
+    registerSubtitle: "Створіть обліковий запис, щоб почати планувати.",
+    emailPlaceholder: "name@example.com",
+    passwordPlaceholder: "Щонайменше 8 символів",
+    brandHeadline: "Плануйте події без зайвого шуму",
+    brandText: "Календар, список і фільтри за важливістю в одному місці.",
     toRegister: "Немає облікового запису? Зареєструватися",
     toLogin: "Вже є обліковий запис? Увійти",
     errors: {
@@ -98,5 +105,21 @@ export const uk = {
     label: "Вигляд",
     calendar: "Календар",
     list: "Список",
+  },
+  home: {
+    title: "Мої події",
+    subtitle: "Усе, що заплановано, у спокійному вигляді.",
+    greeting: "Привіт",
+  },
+  ui: {
+    create: "Створити",
+    menu: "Меню",
+    account: "Обліковий запис",
+    themeMode: {
+      label: "Тема оформлення",
+      light: "Світла",
+      dark: "Темна",
+      system: "Як у системі",
+    },
   },
 } as const;

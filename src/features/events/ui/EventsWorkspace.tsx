@@ -23,7 +23,12 @@ import { EventList } from "./EventList";
 
 /** Calendar/List switcher whose state (view, date, and any other params such
  *  as future filters) lives in the URL, so reload and share reproduce it. */
-export function EventsWorkspace() {
+export function EventsWorkspace({
+  hideControls = false,
+}: {
+  /** PROTOTYPE (ui-redesign): the layout supplies its own toolbar/filter. */
+  hideControls?: boolean;
+}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { view, mode, date, importance, q } = parseViewState(searchParams);
@@ -55,50 +60,54 @@ export function EventsWorkspace() {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 2 }}>
-        <ToggleButtonGroup
-          exclusive
-          size="small"
-          value={view}
-          aria-label={uk.views.label}
-          onChange={(_, next: ViewState["view"] | null) => {
-            if (next) update({ view: next }, "push");
-          }}
-        >
-          {VIEWS.map((v) => (
-            <ToggleButton key={v} value={v}>
-              {uk.views[v]}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
-        {view === "calendar" && (
-          <ToggleButtonGroup
-            exclusive
-            size="small"
-            value={mode}
-            aria-label={uk.modes.label}
-            onChange={(_, next: CalendarMode | null) => {
-              if (!next) return;
-              // Leaving the month grid: land on today rather than the 1st.
-              const anchor =
-                mode === "month" && next !== "month"
-                  ? dateForModeSwitch(
-                      date,
-                      toLocalParts(new Date().toISOString()).date
-                    )
-                  : date;
-              update({ mode: next, date: anchor }, "push");
-            }}
-          >
-            {MODES.map((m) => (
-              <ToggleButton key={m} value={m}>
-                {uk.modes[m]}
-              </ToggleButton>
-            ))}
-          </ToggleButtonGroup>
-        )}
-      </Box>
-      <EventFilterBar value={filter} onChange={changeFilter} />
+      {!hideControls && (
+        <>
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 2 }}>
+            <ToggleButtonGroup
+              exclusive
+              size="small"
+              value={view}
+              aria-label={uk.views.label}
+              onChange={(_, next: ViewState["view"] | null) => {
+                if (next) update({ view: next }, "push");
+              }}
+            >
+              {VIEWS.map((v) => (
+                <ToggleButton key={v} value={v}>
+                  {uk.views[v]}
+                </ToggleButton>
+              ))}
+            </ToggleButtonGroup>
+            {view === "calendar" && (
+              <ToggleButtonGroup
+                exclusive
+                size="small"
+                value={mode}
+                aria-label={uk.modes.label}
+                onChange={(_, next: CalendarMode | null) => {
+                  if (!next) return;
+                  // Leaving the month grid: land on today rather than the 1st.
+                  const anchor =
+                    mode === "month" && next !== "month"
+                      ? dateForModeSwitch(
+                          date,
+                          toLocalParts(new Date().toISOString()).date
+                        )
+                      : date;
+                  update({ mode: next, date: anchor }, "push");
+                }}
+              >
+                {MODES.map((m) => (
+                  <ToggleButton key={m} value={m}>
+                    {uk.modes[m]}
+                  </ToggleButton>
+                ))}
+              </ToggleButtonGroup>
+            )}
+          </Box>
+          <EventFilterBar value={filter} onChange={changeFilter} />
+        </>
+      )}
       {view === "calendar" ? (
         <EventCalendar
           initialDate={date ?? undefined}
