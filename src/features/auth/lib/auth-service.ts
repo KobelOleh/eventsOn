@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { fail, ok, type Result } from "@/shared/result";
+import { fail, fieldErrorsOf, ok, type Result } from "@/shared/result";
 import { resolveEmailConflict } from "./conflict-policy";
 import { loginSchema, registerSchema } from "./schemas";
 import {
@@ -63,15 +63,4 @@ export function createAuthService(repo: UserRepository = userRepository) {
       return ok({ id: user.id, email });
     },
   };
-}
-
-function fieldErrorsOf(
-  issues: readonly { path: PropertyKey[]; message: string }[]
-): Record<string, string[]> {
-  const out: Record<string, string[]> = {};
-  for (const issue of issues) {
-    const key = String(issue.path[0] ?? "form");
-    (out[key] ??= []).push(issue.message);
-  }
-  return out;
 }

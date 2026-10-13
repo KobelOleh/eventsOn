@@ -25,7 +25,8 @@ import type { EventDto } from "../lib/event-service";
 import type { CalendarMode, EventFilterState } from "../lib/view-state";
 import type { EventFormValues } from "./EventDialog";
 import { EventDialogs, editingDialog, type DialogState } from "./EventDialogs";
-import { IMPORTANCE_COLORS } from "./importance";
+import { deriveFilterKeys, toFilterQuery } from "./filter-keys";
+import { IMPORTANCE_COLORS, IMPORTANCE_TEXT_COLOR } from "./importance";
 import "@fullcalendar/react/skeleton.css";
 import "@fullcalendar/react/themes/classic/theme.css";
 import "@fullcalendar/react/themes/classic/palette.css";
@@ -51,7 +52,7 @@ function toCalendarEvent(event: EventDto): EventInput {
     start: event.startsAt,
     extendedProps: { dto: event },
     color,
-    contrastColor: "#ffffff",
+    contrastColor: IMPORTANCE_TEXT_COLOR,
   };
 }
 
@@ -78,9 +79,7 @@ export function EventCalendar({
   filter,
 }: CalendarProps) {
   // Primitive keys keep loadEvents stable until the filter really changes.
-  const importanceKey = filter?.importance.join(",") ?? "";
-  const searchText = filter?.q ?? "";
-  const filtered = importanceKey !== "" || searchText !== "";
+  const { importanceKey, searchText, isFiltered } = deriveFilterKeys(filter);
 
   // The first datesSet is the initial render, not a navigation.
   const lastReported = useRef<string | null>(null);
@@ -146,15 +145,12 @@ export function EventCalendar({
       await new Promise((resolve) => setTimeout(resolve, 0));
       if (request !== latestRequest.current) return [];
       setLoading(true);
-      const { importanceKey: levels, searchText: text } = filterRef.current ?? {
-        importanceKey: "",
-        searchText: "",
-      };
       const result = await listEventsInRange({
         start: info.startStr,
         end: info.endStr,
-        importance: levels ? levels.split(",") : [],
-        q: text,
+        ...toFilterQuery(
+          filterRef.current ?? { importanceKey: "", searchText: "" }
+        ),
       }).catch(() => null);
       if (request !== latestRequest.current) return []; // stale response
       // Past the await we are no longer in FullCalendar's render phase.
@@ -217,7 +213,7 @@ export function EventCalendar({
       )}
       {!loading && !loadFailed && loadedCount === 0 && (
         <Typography color="text.secondary" sx={{ mt: 2, textAlign: "center" }}>
-          {filtered ? uk.filters.noMatches : uk.events.emptyRange}
+          {isFiltered ? uk.filters.noMatches : uk.events.emptyRange}
         </Typography>
       )}
       <EventDialogs dialog={dialog} onChange={setDialog} onChanged={refresh} />

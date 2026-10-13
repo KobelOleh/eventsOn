@@ -7,7 +7,7 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import { uk } from "@/shared/i18n/uk";
 import type { EventDto } from "../lib/event-service";
-import { IMPORTANCE_COLORS } from "./importance";
+import { IMPORTANCE_COLORS, IMPORTANCE_TEXT_COLOR } from "./importance";
 
 const formatStart = (iso: string) =>
   new Date(iso).toLocaleString("uk-UA", {
@@ -44,7 +44,7 @@ export function EventListItem({ event, onSelect }: Props) {
         label={uk.importance[event.importance]}
         sx={{
           bgcolor: IMPORTANCE_COLORS[event.importance],
-          color: "#ffffff",
+          color: IMPORTANCE_TEXT_COLOR,
         }}
       />
     </>

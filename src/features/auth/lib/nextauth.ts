@@ -1,15 +1,15 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
+import { getEnv } from "@/shared/config";
 import { createAuthAdapter } from "./adapter";
 import { createAuthService } from "./auth-service";
 import { decideGoogleSignIn } from "./google-sign-in";
 
 const service = createAuthService();
 
-const googleConfigured = Boolean(
-  process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET
-);
+const { AUTH_GOOGLE_ID, AUTH_GOOGLE_SECRET } = getEnv();
+const googleConfigured = Boolean(AUTH_GOOGLE_ID && AUTH_GOOGLE_SECRET);
 
 /**
  * Auth.js instance: Credentials (+ Google when configured), JWT sessions

@@ -1,13 +1,37 @@
 import { z } from "zod";
 
-const envSchema = z.object({
-  DATABASE_URL: z
-    .string()
-    .regex(/^postgres(ql)?:\/\//, "must be a postgresql:// connection URL"),
-  AUTH_SECRET: z.string().min(16, "must be at least 16 characters"),
-  AUTH_GOOGLE_ID: z.string().min(1, "must not be empty"),
-  AUTH_GOOGLE_SECRET: z.string().min(1, "must not be empty"),
-});
+/** An empty string (as in .env.example) counts as unset. */
+const optionalString = z
+  .string()
+  .optional()
+  .transform((value) => value || undefined);
+
+const envSchema = z
+  .object({
+    DATABASE_URL: z
+      .string()
+      .regex(/^postgres(ql)?:\/\//, "must be a postgresql:// connection URL"),
+    AUTH_SECRET: z.string().min(16, "must be at least 16 characters"),
+    // Optional as a pair: Google sign-in is enabled only when both are set.
+    AUTH_GOOGLE_ID: optionalString,
+    AUTH_GOOGLE_SECRET: optionalString,
+  })
+  .superRefine((env, ctx) => {
+    if (env.AUTH_GOOGLE_ID && !env.AUTH_GOOGLE_SECRET) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["AUTH_GOOGLE_SECRET"],
+        message: "required when AUTH_GOOGLE_ID is set",
+      });
+    }
+    if (env.AUTH_GOOGLE_SECRET && !env.AUTH_GOOGLE_ID) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["AUTH_GOOGLE_ID"],
+        message: "required when AUTH_GOOGLE_SECRET is set",
+      });
+    }
+  });
 
 export type Env = z.infer<typeof envSchema>;
 

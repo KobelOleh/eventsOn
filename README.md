@@ -33,7 +33,7 @@ Copy `.env.example` to `.env` and fill in:
 | `DATABASE_URL`                         | Dev database. The default matches `docker-compose.yml`.                                                                         |
 | `TEST_DATABASE_URL`                    | Test database. The default matches `docker-compose.yml`.                                                                        |
 | `AUTH_SECRET`                          | Required, at least 16 characters. Generate with `npx auth secret` or `openssl rand -base64 32` and paste the value into `.env`. |
-| `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | Required (the app refuses to start with empty values), but only functional with real credentials, see below.                    |
+| `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | Optional, set both or neither (empty counts as unset). Without them Google sign-in is disabled, see below.                      |
 | `AUTH_TRUST_HOST`                      | Set to `true` when running `next start` (production build) on localhost or behind a proxy. `next dev` does not need it.         |
 
 Missing or invalid variables stop the server at startup with a message listing them (values are never printed).
@@ -44,7 +44,7 @@ Missing or invalid variables stop the server at startup with a message listing t
 2. Add the authorized redirect URI `http://localhost:3000/api/auth/callback/google`.
 3. Put the client ID and secret in `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`.
 
-Without real credentials you can still fill in any non-empty placeholders: the app starts and email/password sign-up and sign-in work; only the Google button fails.
+Leave both empty to run without Google: the app starts and email/password sign-up and sign-in work; only the Google button fails.
 
 ## Commands
 
@@ -106,4 +106,4 @@ Development environment:
 
 - **Docker Postgres is needed to commit**, because the pre-commit hook runs the tests.
 - `next start` needs `AUTH_TRUST_HOST=true` outside Vercel.
-- `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` must be non-empty even if you never use Google sign-in.
+- `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` are optional, but must be set together.

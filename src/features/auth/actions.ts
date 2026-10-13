@@ -1,6 +1,6 @@
 "use server";
 
-import type { Result } from "@/shared/result";
+import { ok, type Result } from "@/shared/result";
 import { createAuthService } from "./lib/auth-service";
 import { signIn, signOut } from "./lib/nextauth";
 
@@ -19,7 +19,7 @@ export async function register(
     password: input.password,
     redirect: false,
   });
-  return { ok: true, data: { email: created.data.email } };
+  return ok({ email: created.data.email });
 }
 
 /** Verifies the credentials and starts a JWT session. */
@@ -33,7 +33,7 @@ export async function login(
     password: input.password,
     redirect: false,
   });
-  return { ok: true, data: { email: verified.data.email } };
+  return ok({ email: verified.data.email });
 }
 
 export async function signOutAction(): Promise<void> {
