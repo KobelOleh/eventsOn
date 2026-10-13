@@ -7,6 +7,7 @@ const config = [
   {
     ignores: [
       ".next/**",
+      ".claude/**",
       "node_modules/**",
       "src/generated/**",
       "next-env.d.ts",
