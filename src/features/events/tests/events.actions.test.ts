@@ -8,7 +8,13 @@ vi.mock("@/features/auth", () => ({
 import { requireOwnerId } from "@/features/auth";
 import { prisma } from "@/shared/db";
 import { uk } from "@/shared/i18n/uk";
-import { createEvent, listEvents, listEventsInRange } from "../actions";
+import {
+  createEvent,
+  deleteEvent,
+  listEvents,
+  listEventsInRange,
+  updateEvent,
+} from "../actions";
 
 async function newUser(email: string): Promise<string> {
   const user = await prisma.user.create({ data: { email } });
@@ -361,6 +367,121 @@ describe("events Server Actions", () => {
     });
   });
 
+  describe("updateEvent", () => {
+    async function created() {
+      const result = await createEvent(valid);
+      if (!result.ok) throw new Error("setup failed");
+      return result.data;
+    }
+
+    it("persists every changed field, visible when read back", async () => {
+      const event = await created();
+      const updated = await updateEvent(event.id, {
+        title: "Dentist (moved)",
+        description: "",
+        startsAt: "2026-10-20T08:30:00.000Z",
+        importance: "CRITICAL",
+      });
+      expect(updated).toEqual({
+        ok: true,
+        data: {
+          id: event.id,
+          title: "Dentist (moved)",
+          description: "",
+          startsAt: "2026-10-20T08:30:00.000Z",
+          importance: "CRITICAL",
+        },
+      });
+
+      const listed = await listEventsInRange(october);
+      expect(listed).toEqual({ ok: true, data: [updated.ok && updated.data] });
+    });
+
+    it("applies the same validation as creating and changes nothing on failure", async () => {
+      const event = await created();
+      expect(await updateEvent(event.id, { ...valid, title: " " })).toEqual({
+        ok: false,
+        error: {
+          code: "VALIDATION",
+          fieldErrors: { title: [uk.events.errors.titleRequired] },
+        },
+      });
+      expect(
+        await updateEvent(event.id, { ...valid, startsAt: "nope" })
+      ).toMatchObject({ ok: false, error: { code: "VALIDATION" } });
+
+      const listed = await listEventsInRange(october);
+      expect(listed.ok && listed.data[0]).toMatchObject({ title: "Dentist" });
+    });
+
+    it("returns not-found for an unknown id", async () => {
+      expect(await updateEvent("does-not-exist", valid)).toEqual({
+        ok: false,
+        error: { code: "NOT_FOUND" },
+      });
+    });
+
+    it("returns not-found for another user's Event and changes nothing", async () => {
+      const event = await created();
+
+      signInAs(userB);
+      expect(
+        await updateEvent(event.id, { ...valid, title: "Hijacked" })
+      ).toEqual({ ok: false, error: { code: "NOT_FOUND" } });
+
+      signInAs(userA);
+      const listed = await listEventsInRange(october);
+      expect(listed.ok && listed.data).toEqual([event]);
+    });
+
+    it("cannot move an Event to another Owner via the input", async () => {
+      const event = await created();
+      await updateEvent(event.id, { ...valid, ownerId: userB });
+
+      signInAs(userB);
+      const listed = await listEventsInRange(october);
+      expect(listed.ok && listed.data).toEqual([]);
+    });
+  });
+
+  describe("deleteEvent", () => {
+    it("permanently removes the Event", async () => {
+      const result = await createEvent(valid);
+      const id = result.ok ? result.data.id : "";
+
+      expect(await deleteEvent(id)).toEqual({ ok: true, data: { id } });
+
+      const listed = await listEventsInRange(october);
+      expect(listed.ok && listed.data).toEqual([]);
+      expect(await deleteEvent(id)).toEqual({
+        ok: false,
+        error: { code: "NOT_FOUND" },
+      });
+    });
+
+    it("returns not-found for another user's Event and changes nothing", async () => {
+      const result = await createEvent(valid);
+      const id = result.ok ? result.data.id : "";
+
+      signInAs(userB);
+      expect(await deleteEvent(id)).toEqual({
+        ok: false,
+        error: { code: "NOT_FOUND" },
+      });
+
+      signInAs(userA);
+      const listed = await listEventsInRange(october);
+      expect(listed.ok && listed.data).toHaveLength(1);
+    });
+
+    it("treats a non-string id as not-found", async () => {
+      expect(await deleteEvent(undefined)).toEqual({
+        ok: false,
+        error: { code: "NOT_FOUND" },
+      });
+    });
+  });
+
   describe("Owner isolation", () => {
     it("never shows user A's Events to user B", async () => {
       await createEvent({ ...valid, title: "A secret" });
@@ -385,6 +506,8 @@ describe("events Server Actions", () => {
       vi.mocked(requireOwnerId).mockRejectedValue(new Error("UNAUTHORIZED"));
       await expect(createEvent(valid)).rejects.toThrow("UNAUTHORIZED");
       await expect(listEventsInRange(october)).rejects.toThrow("UNAUTHORIZED");
+      await expect(updateEvent("x", valid)).rejects.toThrow("UNAUTHORIZED");
+      await expect(deleteEvent("x")).rejects.toThrow("UNAUTHORIZED");
       expect(await prisma.event.count()).toBe(0);
     });
   });

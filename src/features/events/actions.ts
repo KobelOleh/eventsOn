@@ -23,6 +23,23 @@ export async function listEvents(input: unknown): Promise<Result<EventPage>> {
   return service.list(ownerId, input);
 }
 
+/** Replaces all fields of the Owner's Event; not-found if not theirs. */
+export async function updateEvent(
+  id: unknown,
+  input: unknown
+): Promise<Result<EventDto>> {
+  const ownerId = await requireOwnerId();
+  return service.update(ownerId, id, input);
+}
+
+/** Permanently deletes the Owner's Event; not-found if not theirs. */
+export async function deleteEvent(
+  id: unknown
+): Promise<Result<{ id: string }>> {
+  const ownerId = await requireOwnerId();
+  return service.delete(ownerId, id);
+}
+
 /** The signed-in Owner's Events starting in [start, end) (ISO instants). */
 export async function listEventsInRange(
   input: unknown

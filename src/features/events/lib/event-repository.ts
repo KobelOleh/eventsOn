@@ -54,6 +54,26 @@ export const eventRepository = {
     });
   },
 
+  /** Null when the Event does not exist or belongs to another Owner. */
+  async update(
+    ownerId: string,
+    id: string,
+    data: NewEvent
+  ): Promise<EventRecord | null> {
+    const { count } = await prisma.event.updateMany({
+      where: { id, ownerId },
+      data,
+    });
+    if (count === 0) return null;
+    return prisma.event.findFirst({ where: { id, ownerId }, select });
+  },
+
+  /** Permanent. False when nothing of this Owner matched. */
+  async delete(ownerId: string, id: string): Promise<boolean> {
+    const { count } = await prisma.event.deleteMany({ where: { id, ownerId } });
+    return count > 0;
+  },
+
   /** Events whose start lies in [start, end), earliest first. */
   findStartingBetween(
     ownerId: string,

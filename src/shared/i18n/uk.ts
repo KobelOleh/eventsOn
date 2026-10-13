@@ -56,6 +56,18 @@ export const uk = {
       cursorInvalid: "Некоректна позиція у списку.",
     },
   },
+  // Editing and deleting an Event (ticket 05)
+  eventEdit: {
+    editTitle: "Редагування події",
+    delete: "Видалити",
+    deleteConfirmTitle: "Видалити подію?",
+    deleteConfirmText:
+      "Подію буде видалено назавжди. Цю дію неможливо скасувати.",
+    deleteConfirm: "Видалити",
+    deleteCancel: "Залишити",
+    deleteFailed: "Не вдалося видалити подію. Спробуйте ще раз.",
+    notFound: "Цю подію вже видалено або вона недоступна.",
+  },
   list: {
     showMore: "Показати ще",
     label: "Список подій",
