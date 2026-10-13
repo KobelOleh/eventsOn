@@ -51,7 +51,14 @@ export function EventListItem({ event, onSelect }: Props) {
   );
 
   return (
-    <ListItem disablePadding divider data-testid="event-list-item">
+    <ListItem
+      disablePadding
+      divider
+      // The list's border closes the last row; its own divider would show
+      // as a stray line under the rounded card.
+      sx={{ "&:last-of-type": { borderBottom: 0 } }}
+      data-testid="event-list-item"
+    >
       {onSelect ? (
         <ListItemButton onClick={() => onSelect(event)}>
           {content}

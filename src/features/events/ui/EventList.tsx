@@ -124,7 +124,8 @@ export function EventList({ filter }: Props) {
 
   return (
     <Box aria-label={uk.list.label}>
-      <Paper variant="outlined">
+      {/* overflow hidden: row hover must follow the rounded corners. */}
+      <Paper variant="outlined" sx={{ overflow: "hidden" }}>
         <List disablePadding>
           {items.map((event) => (
             <EventListItem key={event.id} event={event} onSelect={openEdit} />
