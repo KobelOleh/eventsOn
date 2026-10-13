@@ -1,4 +1,12 @@
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 // Only the session boundary is mocked (one seam, real Postgres).
 vi.mock("@/features/auth", () => ({
@@ -8,6 +16,7 @@ vi.mock("@/features/auth", () => ({
 import { requireOwnerId } from "@/features/auth";
 import { prisma } from "@/shared/db";
 import { uk } from "@/shared/i18n/uk";
+import { eventRepository } from "../lib/event-repository";
 import {
   createEvent,
   deleteEvent,
@@ -48,6 +57,10 @@ describe("events Server Actions", () => {
     userA = await newUser("a@example.com");
     userB = await newUser("b@example.com");
     signInAs(userA);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   afterAll(async () => {
@@ -520,13 +533,20 @@ describe("events Server Actions", () => {
 
   it("every exported Server Action rejects an anonymous caller", async () => {
     vi.mocked(requireOwnerId).mockRejectedValue(new Error("UNAUTHORIZED"));
+    // None of them may get as far as the repository.
+    const touched = (
+      Object.keys(eventRepository) as (keyof typeof eventRepository)[]
+    ).map((method) => vi.spyOn(eventRepository, method));
     const exported = Object.entries(actions);
     expect(exported.length).toBeGreaterThan(0);
     for (const [name, action] of exported) {
+      vi.mocked(requireOwnerId).mockClear();
       await expect(
         (action as (...args: unknown[]) => Promise<unknown>)(),
         name
       ).rejects.toThrow("UNAUTHORIZED");
+      expect(requireOwnerId, name).toHaveBeenCalledTimes(1);
     }
+    for (const spy of touched) expect(spy).not.toHaveBeenCalled();
   });
 });

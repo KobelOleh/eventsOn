@@ -24,7 +24,10 @@ type Mode = "login" | "register";
 type Failure = Extract<Result<unknown>, { ok: false }>;
 /** The email travels with the failure: React resets the form's fields after
  *  every action, and the user should not have to retype it. */
-type FormState = { failure: Failure; email: string } | null;
+type FormState =
+  | { failure: Failure; email: string }
+  | { unexpected: true; email: string }
+  | null;
 
 function Field({
   name,
@@ -99,7 +102,14 @@ export function CredentialsForm({
         email: String(formData.get("email") ?? ""),
         password: String(formData.get("password") ?? ""),
       };
-      const result = await (isLogin ? login(input) : register(input));
+      let result: Result<unknown>;
+      try {
+        result = await (isLogin ? login(input) : register(input));
+      } catch {
+        // An unexpected failure (e.g. the database is down) is not a wrong
+        // password: say so in the form instead of crashing the page.
+        return { unexpected: true, email: input.email };
+      }
       if (result.ok) {
         router.replace("/");
         router.refresh();
@@ -110,11 +120,14 @@ export function CredentialsForm({
     null
   );
 
-  const fieldErrors = state?.failure.error.fieldErrors ?? {};
+  const failure = state && "failure" in state ? state.failure : null;
+  const fieldErrors = failure?.error.fieldErrors ?? {};
   const genericError =
-    state?.failure.error.code === "INVALID_CREDENTIALS"
-      ? t.errors.invalidCredentials
-      : fieldErrors.form?.[0];
+    state && "unexpected" in state
+      ? t.errors.unexpected
+      : failure?.error.code === "INVALID_CREDENTIALS"
+        ? t.errors.invalidCredentials
+        : fieldErrors.form?.[0];
 
   return (
     <SoftBackdrop
