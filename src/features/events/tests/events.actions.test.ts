@@ -1,4 +1,12 @@
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 // Only the session boundary is mocked (one seam, real Postgres).
 vi.mock("@/features/auth", () => ({
@@ -49,6 +57,10 @@ describe("events Server Actions", () => {
     userA = await newUser("a@example.com");
     userB = await newUser("b@example.com");
     signInAs(userA);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   afterAll(async () => {

@@ -1,5 +1,6 @@
 import { Auth, raw, skipCSRFCheck } from "@auth/core";
 import Credentials from "@auth/core/providers/credentials";
+import { AuthError, CredentialsSignin } from "next-auth";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/shared/db";
 import { uk } from "@/shared/i18n/uk";
@@ -7,9 +8,7 @@ import { createAuthAdapter } from "../lib/adapter";
 import { createAuthService } from "../lib/auth-service";
 import { createPasswordSignIn } from "../lib/password-sign-in";
 
-// The same flow as production but through Auth.js' real core instead of a
-// stand-in, so a version bump that stops rethrowing the refusal from
-// `authorize` fails here (see CredentialsRefused).
+/** Starts a session through Auth.js' real core instead of a stand-in. */
 function signInThroughAuthJs(
   verifier: Parameters<typeof createPasswordSignIn>[0]
 ) {
@@ -50,6 +49,9 @@ function signInThroughAuthJs(
 const service = createAuthService();
 const passwordSignIn = signInThroughAuthJs(service);
 
+// The same flow as production but through Auth.js' real core instead of a
+// stand-in, so a version bump that stops rethrowing the refusal from
+// `authorize` fails here (see CredentialsRefused).
 describe("password sign-in through the real Auth.js core", () => {
   beforeEach(async () => {
     await prisma.account.deleteMany();
@@ -108,8 +110,12 @@ describe("password sign-in through the real Auth.js core", () => {
       },
     });
 
-    await expect(
-      broken.signIn("c@example.com", "whatever pass")
-    ).rejects.toThrow();
+    const failure = await broken.signIn("c@example.com", "whatever pass").then(
+      () => null,
+      (error: unknown) => error
+    );
+
+    expect(failure).toBeInstanceOf(AuthError);
+    expect(failure).not.toBeInstanceOf(CredentialsSignin);
   });
 });
