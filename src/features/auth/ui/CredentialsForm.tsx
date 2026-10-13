@@ -21,7 +21,10 @@ import { login, register } from "../actions";
 import { LockIcon, MailIcon } from "./icons";
 
 type Mode = "login" | "register";
-type FormState = Extract<Result<unknown>, { ok: false }> | null;
+type Failure = Extract<Result<unknown>, { ok: false }>;
+/** The email travels with the failure: React resets the form's fields after
+ *  every action, and the user should not have to retype it. */
+type FormState = { failure: Failure; email: string } | null;
 
 function Field({
   name,
@@ -31,6 +34,7 @@ function Field({
   autoComplete,
   icon,
   errors,
+  defaultValue,
 }: {
   name: string;
   type: string;
@@ -39,11 +43,13 @@ function Field({
   autoComplete: string;
   icon: ReactNode;
   errors?: string[];
+  defaultValue?: string;
 }) {
   return (
     <TextField
       name={name}
       type={type}
+      defaultValue={defaultValue}
       label={label}
       placeholder={placeholder}
       autoComplete={autoComplete}
@@ -99,14 +105,14 @@ export function CredentialsForm({
         router.refresh();
         return null;
       }
-      return result;
+      return { failure: result, email: input.email };
     },
     null
   );
 
-  const fieldErrors = state?.error.fieldErrors ?? {};
+  const fieldErrors = state?.failure.error.fieldErrors ?? {};
   const genericError =
-    state?.error.code === "INVALID_CREDENTIALS"
+    state?.failure.error.code === "INVALID_CREDENTIALS"
       ? t.errors.invalidCredentials
       : fieldErrors.form?.[0];
 
@@ -166,6 +172,7 @@ export function CredentialsForm({
             autoComplete="email"
             icon={<MailIcon />}
             errors={fieldErrors.email}
+            defaultValue={state?.email}
           />
           <Field
             name="password"
