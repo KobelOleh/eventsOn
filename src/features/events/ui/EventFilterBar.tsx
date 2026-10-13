@@ -15,7 +15,7 @@ import {
   type Importance,
 } from "../lib/schemas";
 import { isNarrowing, type EventFilterState } from "../lib/event-filter";
-import { IMPORTANCE_COLORS } from "./importance";
+import { presentationOf } from "./importance";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -88,20 +88,23 @@ export function EventFilterBar({ value, onChange }: Props) {
           },
         }}
       >
-        {IMPORTANCES.map((level) => (
-          <ToggleButton key={level} value={level} sx={{ gap: 1 }}>
-            <Box
-              aria-hidden
-              sx={{
-                width: 10,
-                height: 10,
-                borderRadius: "50%",
-                bgcolor: IMPORTANCE_COLORS[level],
-              }}
-            />
-            {uk.importance[level]}
-          </ToggleButton>
-        ))}
+        {IMPORTANCES.map((level) => {
+          const { label, color } = presentationOf(level);
+          return (
+            <ToggleButton key={level} value={level} sx={{ gap: 1 }}>
+              <Box
+                aria-hidden
+                sx={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  bgcolor: color,
+                }}
+              />
+              {label}
+            </ToggleButton>
+          );
+        })}
       </ToggleButtonGroup>
       <TextField
         size="small"

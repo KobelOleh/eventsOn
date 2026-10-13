@@ -5,9 +5,8 @@ import Chip from "@mui/material/Chip";
 import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
-import { uk } from "@/shared/i18n/uk";
 import type { EventDto } from "../lib/event-service";
-import { IMPORTANCE_COLORS, IMPORTANCE_TEXT_COLOR } from "./importance";
+import { presentationOf } from "./importance";
 
 const formatStart = (iso: string) =>
   new Date(iso).toLocaleString("uk-UA", {
@@ -23,6 +22,7 @@ type Props = {
 
 /** One row of the List view. */
 export function EventListItem({ event, onSelect }: Props) {
+  const importance = presentationOf(event.importance);
   const content = (
     <>
       <Box
@@ -32,7 +32,7 @@ export function EventListItem({ event, onSelect }: Props) {
           alignSelf: "stretch",
           borderRadius: 1,
           mr: 2,
-          bgcolor: IMPORTANCE_COLORS[event.importance],
+          bgcolor: importance.color,
         }}
       />
       <ListItemText
@@ -41,10 +41,10 @@ export function EventListItem({ event, onSelect }: Props) {
       />
       <Chip
         size="small"
-        label={uk.importance[event.importance]}
+        label={importance.label}
         sx={{
-          bgcolor: IMPORTANCE_COLORS[event.importance],
-          color: IMPORTANCE_TEXT_COLOR,
+          bgcolor: importance.color,
+          color: importance.textColor,
         }}
       />
     </>

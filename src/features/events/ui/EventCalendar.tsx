@@ -35,7 +35,7 @@ import {
   EventDialogs,
   type DialogState,
 } from "./EventDialogs";
-import { IMPORTANCE_COLORS, IMPORTANCE_TEXT_COLOR } from "./importance";
+import { presentationOf } from "./importance";
 import { CalendarGridSkeleton } from "./skeletons";
 import "@fullcalendar/react/skeleton.css";
 import "@fullcalendar/react/themes/classic/theme.css";
@@ -55,14 +55,14 @@ const VIEW_NAMES: Record<CalendarMode, string> = {
 };
 
 function toCalendarEvent(event: EventDto): EventInput {
-  const color = IMPORTANCE_COLORS[event.importance];
+  const { color, textColor } = presentationOf(event.importance);
   return {
     id: event.id,
     title: event.title,
     start: event.startsAt,
     extendedProps: { dto: event },
     color,
-    contrastColor: IMPORTANCE_TEXT_COLOR,
+    contrastColor: textColor,
   };
 }
 

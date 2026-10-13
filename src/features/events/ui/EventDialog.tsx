@@ -15,6 +15,7 @@ import type { Result } from "@/shared/result";
 import { fromLocalParts } from "../lib/datetime";
 import type { EventDto } from "../lib/event-service";
 import { IMPORTANCES, type Importance } from "../lib/schemas";
+import { presentationOf } from "./importance";
 
 /** What the user edits; date and time are browser-local input values. */
 export type EventFormValues = {
@@ -158,7 +159,7 @@ export function EventDialog({
           >
             {IMPORTANCES.map((level) => (
               <MenuItem key={level} value={level}>
-                {uk.importance[level]}
+                {presentationOf(level).label}
               </MenuItem>
             ))}
           </TextField>
