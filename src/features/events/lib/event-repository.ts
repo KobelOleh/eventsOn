@@ -2,7 +2,7 @@ import { prisma } from "@/shared/db";
 import type { Prisma } from "@/generated/prisma/client";
 import type { Importance } from "./constants";
 import type { Cursor } from "./cursor";
-import type { EventFilter } from "./schemas";
+import type { EventFilterState } from "./event-filter";
 
 export type EventRecord = {
   id: string;
@@ -49,7 +49,7 @@ function searchWhere(q: string): Prisma.EventWhereInput[] {
     });
 }
 
-function filterWhere(filter: EventFilter): Prisma.EventWhereInput {
+function filterWhere(filter: EventFilterState): Prisma.EventWhereInput {
   return {
     ...(filter.importance.length > 0 && {
       importance: { in: filter.importance },
@@ -71,7 +71,7 @@ export const eventRepository = {
     ownerId: string,
     after: Cursor | undefined,
     take: number,
-    filter: EventFilter
+    filter: EventFilterState
   ): Promise<EventRecord[]> {
     return prisma.event.findMany({
       where: {
@@ -115,7 +115,7 @@ export const eventRepository = {
     ownerId: string,
     start: Date,
     end: Date,
-    filter: EventFilter
+    filter: EventFilterState
   ): Promise<EventRecord[]> {
     return prisma.event.findMany({
       where: {

@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   filterEquals,
   isNarrowing,
+  normaliseFilter,
   parseFilter,
   UNFILTERED,
   writeFilter,
 } from "../lib/event-filter";
 import { MAX_SEARCH_LENGTH } from "../lib/constants";
+import { filterSchema } from "../lib/schemas";
 
 describe("parseFilter", () => {
   it("reads no params as Unfiltered", () => {
@@ -69,5 +71,42 @@ describe("filterEquals and isNarrowing", () => {
     expect(isNarrowing(cases.importance)).toBe(true);
     expect(isNarrowing(cases.keyword)).toBe(true);
     expect(isNarrowing(cases.both)).toBe(true);
+  });
+});
+
+describe("normaliseFilter", () => {
+  it("trims, dedupes and orders Importance canonically", () => {
+    expect(
+      normaliseFilter({
+        importance: ["CRITICAL", "NORMAL", "CRITICAL"],
+        q: " a ",
+      })
+    ).toEqual({ importance: ["NORMAL", "CRITICAL"], q: "a" });
+  });
+
+  it("reads missing parts as Unfiltered", () => {
+    expect(normaliseFilter({})).toEqual(UNFILTERED);
+  });
+});
+
+describe("the server filter schema and the URL parser", () => {
+  const raw = {
+    importance: ["IMPORTANT", "NORMAL", "IMPORTANT"] as const,
+    q: "  cake ",
+  };
+
+  it("normalise the same Filter the same way", () => {
+    const fromUrl = parseFilter(
+      "importance=IMPORTANT,NORMAL,IMPORTANT&q=%20%20cake%20"
+    );
+    const parsed = filterSchema.parse({
+      ...raw,
+      importance: [...raw.importance],
+    });
+    expect(parsed).toEqual(fromUrl);
+  });
+
+  it("reads a blank search as Unfiltered, like the URL parser", () => {
+    expect(filterSchema.parse({ q: "   " })).toEqual(parseFilter(""));
   });
 });

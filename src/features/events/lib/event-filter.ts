@@ -10,18 +10,32 @@ export const UNFILTERED: EventFilterState = { importance: [], q: "" };
 
 export type SearchParamsLike = { get(name: string): string | null };
 
-/** Normalised: trimmed and length-capped search, unique known Importance
- *  levels in canonical order. Never fails. */
+/** The one place a Filter is normalised, for the URL and the server alike:
+ *  unique known Importance levels in canonical order, and a trimmed search cut
+ *  to MAX_SEARCH_LENGTH. Never fails; the server schema rejects over-long
+ *  input before it gets here, the URL parser relies on the cut. */
+export function normaliseFilter(raw: {
+  importance?: readonly string[];
+  q?: string;
+}): EventFilterState {
+  const selected = raw.importance ?? [];
+  return {
+    importance: IMPORTANCES.filter((level) => selected.includes(level)),
+    q: (raw.q ?? "").trim().slice(0, MAX_SEARCH_LENGTH).trimEnd(),
+  };
+}
+
+/** Reads the Filter from URL params; anything unusable falls back to
+ *  Unfiltered parts. */
 export function parseFilter(
   params: SearchParamsLike | string
 ): EventFilterState {
   const source =
     typeof params === "string" ? new URLSearchParams(params) : params;
-  const selected = (source.get("importance") ?? "").split(",");
-  return {
-    importance: IMPORTANCES.filter((level) => selected.includes(level)),
-    q: (source.get("q") ?? "").trim().slice(0, MAX_SEARCH_LENGTH).trimEnd(),
-  };
+  return normaliseFilter({
+    importance: (source.get("importance") ?? "").split(","),
+    q: source.get("q") ?? "",
+  });
 }
 
 /** The query string (without "?") with `filter` written over `into`'s Filter
