@@ -5,6 +5,7 @@ import Box from "@mui/material/Box";
 import FullCalendar, {
   type CalendarRef,
   type DateClickInfo,
+  type EventClickInfo,
   type EventInput,
   type EventSourceFuncInfo,
 } from "@fullcalendar/react";
@@ -14,9 +15,15 @@ import ukLocale from "@fullcalendar/react/locales/uk";
 import classicThemePlugin from "@fullcalendar/react/themes/classic";
 import { useCallback, useRef, useState, useSyncExternalStore } from "react";
 import { uk } from "@/shared/i18n/uk";
-import { createEvent, listEventsInRange } from "../actions";
-import { DEFAULT_TIME } from "../lib/datetime";
+import {
+  createEvent,
+  deleteEvent,
+  listEventsInRange,
+  updateEvent,
+} from "../actions";
+import { DEFAULT_TIME, toLocalParts } from "../lib/datetime";
 import type { EventDto } from "../lib/event-service";
+import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
 import { EventDialog, type EventFormValues } from "./EventDialog";
 import { IMPORTANCE_COLORS } from "./importance";
 import "@fullcalendar/react/skeleton.css";
@@ -31,6 +38,7 @@ function toCalendarEvent(event: EventDto): EventInput {
     id: event.id,
     title: event.title,
     start: event.startsAt,
+    extendedProps: { dto: event },
     color,
     contrastColor: "#ffffff",
   };
@@ -46,7 +54,13 @@ function emptyForm(date: string): EventFormValues {
   };
 }
 
-type DialogState = { key: number; values: EventFormValues } | null;
+type DialogState = {
+  key: number;
+  values: EventFormValues;
+  /** Set when editing an existing Event. */
+  editing?: EventDto;
+  confirmingDelete?: boolean;
+} | null;
 
 const subscribeNothing = () => () => {};
 
@@ -92,6 +106,25 @@ export function EventCalendar() {
     });
   }, []);
 
+  const handleEventClick = useCallback((info: EventClickInfo) => {
+    const dto = info.event.extendedProps.dto as EventDto;
+    const { date, time } = toLocalParts(dto.startsAt);
+    dialogCount.current += 1;
+    setDialog({
+      key: dialogCount.current,
+      editing: dto,
+      values: {
+        title: dto.title,
+        description: dto.description,
+        date,
+        time,
+        importance: dto.importance,
+      },
+    });
+  }, []);
+
+  const refresh = () => calendarRef.current?.getApi().refetchEvents();
+
   return (
     <Box aria-label={uk.events.calendarLabel}>
       {loadFailed && (
@@ -111,19 +144,47 @@ export function EventCalendar() {
           height="auto"
           events={loadEvents}
           dateClick={handleDateClick}
+          eventClick={handleEventClick}
         />
       )}
       {dialog && (
         <EventDialog
           key={dialog.key}
           open
-          heading={uk.events.createTitle}
+          heading={
+            dialog.editing ? uk.eventEdit.editTitle : uk.events.createTitle
+          }
           initialValues={dialog.values}
           onClose={() => setDialog(null)}
-          onSubmit={createEvent}
+          onSubmit={(payload) =>
+            dialog.editing
+              ? updateEvent(dialog.editing.id, payload)
+              : createEvent(payload)
+          }
           onSaved={() => {
             setDialog(null);
-            calendarRef.current?.getApi().refetchEvents();
+            refresh();
+          }}
+          onDelete={
+            dialog.editing
+              ? () => setDialog({ ...dialog, confirmingDelete: true })
+              : undefined
+          }
+        />
+      )}
+      {dialog?.editing && dialog.confirmingDelete && (
+        <ConfirmDeleteDialog
+          title={dialog.editing.title}
+          onCancel={() => setDialog({ ...dialog, confirmingDelete: false })}
+          onConfirm={async () => {
+            const result = await deleteEvent(dialog.editing!.id);
+            // Already gone elsewhere counts as deleted: the view must refresh.
+            const gone = result.ok || result.error.code === "NOT_FOUND";
+            if (gone) {
+              setDialog(null);
+              refresh();
+            }
+            return gone;
           }}
         />
       )}
