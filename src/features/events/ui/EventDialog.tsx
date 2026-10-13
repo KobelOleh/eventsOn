@@ -41,6 +41,8 @@ type Props = {
   /** Create or update; the dialog does not know which. */
   onSubmit: (payload: EventPayload) => Promise<Result<EventDto>>;
   onSaved: (saved: EventDto) => void;
+  /** Present only when editing: shows a Delete button (confirmation is the caller's). */
+  onDelete?: () => void;
 };
 
 /**
@@ -54,6 +56,7 @@ export function EventDialog({
   onClose,
   onSubmit,
   onSaved,
+  onDelete,
 }: Props) {
   const t = uk.events;
   const [values, setValues] = useState(initialValues);
@@ -80,7 +83,11 @@ export function EventDialog({
         onSaved(result.data);
       } else {
         setFieldErrors(result.error.fieldErrors ?? {});
-        if (!result.error.fieldErrors) setFormError(t.saveFailed);
+        if (result.error.code === "NOT_FOUND") {
+          setFormError(uk.eventEdit.notFound);
+        } else if (!result.error.fieldErrors) {
+          setFormError(t.saveFailed);
+        }
       }
     } catch {
       setFormError(t.saveFailed);
@@ -168,6 +175,16 @@ export function EventDialog({
         </Stack>
       </DialogContent>
       <DialogActions>
+        {onDelete && (
+          <Button
+            color="error"
+            onClick={onDelete}
+            disabled={pending}
+            sx={{ mr: "auto" }}
+          >
+            {uk.eventEdit.delete}
+          </Button>
+        )}
         <Button onClick={onClose} disabled={pending}>
           {t.cancel}
         </Button>
