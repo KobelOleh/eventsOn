@@ -20,12 +20,20 @@ type Props = {
   filter: EventFilterState;
 };
 
+/** How a reload shows: "initial" replaces the list with a skeleton, "filter"
+ *  keeps the rows on screen (dimmed) until the new Filter's rows arrive, so
+ *  typing in the search does not make the page jump, and "silent" refreshes
+ *  after a change without any indicator. */
+type ReloadMode = "initial" | "filter" | "silent";
+
 /** The Owner's Events as a paged list, earliest first, 20 at a time.
  *  Clicking a row opens the edit dialog; the list reloads after a change. */
 export function EventList({ filter }: Props) {
   const [items, setItems] = useState<EventDto[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true); // first page, initially
+  const [refreshing, setRefreshing] = useState(false);
+  const loadedOnce = useRef(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [failed, setFailed] = useState(false);
   // Bumped whenever the list is (re)started; older responses are dropped.
@@ -42,9 +50,10 @@ export function EventList({ filter }: Props) {
 
   /** Loads the first page, replacing the list. */
   const reload = useCallback(
-    async (showSpinner: boolean) => {
+    async (mode: ReloadMode) => {
       const mine = ++generation.current;
-      if (showSpinner) setLoading(true);
+      if (mode === "initial") setLoading(true);
+      if (mode === "filter") setRefreshing(true);
       setFailed(false);
       setLoadingMore(false);
       const result = await listEvents(query(null)).catch(() => null);
@@ -53,17 +62,22 @@ export function EventList({ filter }: Props) {
         setItems(result.data.items);
         setNextCursor(result.data.nextCursor);
       } else {
-        if (showSpinner) setItems([]);
+        // Rows of an older Filter must not stand beside the error.
+        if (mode !== "silent") setItems([]);
         setNextCursor(null);
         setFailed(true);
       }
+      loadedOnce.current = true;
       setLoading(false);
+      setRefreshing(false);
     },
     [query]
   );
 
   useEffect(() => {
-    void Promise.resolve().then(() => reload(true));
+    void Promise.resolve().then(() =>
+      reload(loadedOnce.current ? "filter" : "initial")
+    );
   }, [reload]);
 
   const showMore = async () => {
@@ -82,7 +96,7 @@ export function EventList({ filter }: Props) {
     setLoadingMore(false);
   };
 
-  const { openEdit, dialogs } = useEventDialogs(() => void reload(false));
+  const { openEdit, dialogs } = useEventDialogs(() => void reload("silent"));
 
   if (loading) {
     return (
@@ -99,7 +113,9 @@ export function EventList({ filter }: Props) {
         <Alert
           severity="error"
           action={
-            <Button onClick={() => void reload(true)}>{uk.list.retry}</Button>
+            <Button onClick={() => void reload("initial")}>
+              {uk.list.retry}
+            </Button>
           }
         >
           {uk.list.loadFailed}
@@ -123,9 +139,16 @@ export function EventList({ filter }: Props) {
   }
 
   return (
-    <Box aria-label={uk.list.label}>
+    <Box aria-label={uk.list.label} aria-busy={refreshing}>
       {/* overflow hidden: row hover must follow the rounded corners. */}
-      <Paper variant="outlined" sx={{ overflow: "hidden" }}>
+      <Paper
+        variant="outlined"
+        sx={{
+          overflow: "hidden",
+          opacity: refreshing ? 0.55 : 1,
+          transition: "opacity 120ms",
+        }}
+      >
         <List disablePadding>
           {items.map((event) => (
             <EventListItem key={event.id} event={event} onSelect={openEdit} />
