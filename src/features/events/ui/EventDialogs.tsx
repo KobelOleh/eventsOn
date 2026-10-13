@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { createEvent, deleteEvent, updateEvent } from "../actions";
 import { DEFAULT_TIME, toLocalParts } from "../lib/datetime";
-import type { EventDto } from "../lib/event-service";
+import type { EventDto } from "../lib/event-dto";
 import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
 import { useRegisterCreateEvent } from "./create-event";
 import { EventDialog, type EventFormValues } from "./EventDialog";

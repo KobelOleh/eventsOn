@@ -2,11 +2,8 @@
 
 import { requireOwnerId } from "@/features/auth";
 import type { Result } from "@/shared/result";
-import {
-  createEventService,
-  type EventDto,
-  type EventPage,
-} from "./lib/event-service";
+import type { EventDto, EventPage } from "./lib/event-dto";
+import { createEventService } from "./lib/event-service";
 
 const service = createEventService();
 

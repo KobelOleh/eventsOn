@@ -5,7 +5,7 @@ import Chip from "@mui/material/Chip";
 import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
-import type { EventDto } from "../lib/event-service";
+import type { EventDto } from "../lib/event-dto";
 import { presentationOf } from "./importance";
 
 const formatStart = (iso: string) =>

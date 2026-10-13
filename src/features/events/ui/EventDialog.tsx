@@ -13,7 +13,7 @@ import { useState } from "react";
 import { uk } from "@/shared/i18n/uk";
 import type { Result } from "@/shared/result";
 import { fromLocalParts } from "../lib/datetime";
-import type { EventDto } from "../lib/event-service";
+import type { EventDto } from "../lib/event-dto";
 import { IMPORTANCES, type Importance } from "../lib/constants";
 import { presentationOf } from "./importance";
 

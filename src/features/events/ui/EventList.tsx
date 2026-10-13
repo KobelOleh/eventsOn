@@ -9,11 +9,12 @@ import Typography from "@mui/material/Typography";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { uk } from "@/shared/i18n/uk";
 import { listEvents } from "../actions";
-import type { EventDto } from "../lib/event-service";
+import type { EventDto } from "../lib/event-dto";
 import { isNarrowing, type EventFilterState } from "../lib/event-filter";
 import { useEventDialogs } from "./EventDialogs";
 import { EventListItem } from "./EventListItem";
 import { EventListSkeleton } from "./skeletons";
+import { useLatestRequest } from "./use-latest-request";
 
 type Props = {
   /** Importance filter and search; a change reloads from the first page. */
@@ -36,8 +37,8 @@ export function EventList({ filter }: Props) {
   const loadedOnce = useRef(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [failed, setFailed] = useState(false);
-  // Bumped whenever the list is (re)started; older responses are dropped.
-  const generation = useRef(0);
+  // Restarting the list outdates every earlier response.
+  const latest = useLatestRequest();
 
   const query = useCallback(
     (cursor: string | null) => ({
@@ -51,13 +52,13 @@ export function EventList({ filter }: Props) {
   /** Loads the first page, replacing the list. */
   const reload = useCallback(
     async (mode: ReloadMode) => {
-      const mine = ++generation.current;
+      const isCurrent = latest.start();
       if (mode === "initial") setLoading(true);
       if (mode === "filter") setRefreshing(true);
       setFailed(false);
       setLoadingMore(false);
       const result = await listEvents(query(null)).catch(() => null);
-      if (mine !== generation.current) return;
+      if (!isCurrent()) return;
       if (result?.ok) {
         setItems(result.data.items);
         setNextCursor(result.data.nextCursor);
@@ -71,7 +72,7 @@ export function EventList({ filter }: Props) {
       setLoading(false);
       setRefreshing(false);
     },
-    [query]
+    [query, latest]
   );
 
   useEffect(() => {
@@ -82,11 +83,11 @@ export function EventList({ filter }: Props) {
 
   const showMore = async () => {
     if (loadingMore || nextCursor === null) return;
-    const mine = generation.current;
+    const isCurrent = latest.current();
     setLoadingMore(true);
     setFailed(false);
     const result = await listEvents(query(nextCursor)).catch(() => null);
-    if (mine !== generation.current) return;
+    if (!isCurrent()) return;
     if (result?.ok) {
       setItems((prev) => [...prev, ...result.data.items]);
       setNextCursor(result.data.nextCursor);

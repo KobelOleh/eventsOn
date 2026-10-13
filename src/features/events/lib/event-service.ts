@@ -12,19 +12,7 @@ import {
   PAGE_SIZE,
   rangeSchema,
 } from "./schemas";
-import type { Importance } from "./constants";
-
-/** One List view page; `nextCursor` is null at the end of the list. */
-export type EventPage = { items: EventDto[]; nextCursor: string | null };
-
-/** What crosses the wire to the client: plain data, ISO instants in UTC. */
-export type EventDto = {
-  id: string;
-  title: string;
-  description: string;
-  startsAt: string;
-  importance: Importance;
-};
+import type { EventDto, EventPage } from "./event-dto";
 
 export function toDto(record: EventRecord): EventDto {
   return {

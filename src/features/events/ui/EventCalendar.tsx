@@ -21,7 +21,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { uk } from "@/shared/i18n/uk";
 import { listEventsInRange } from "../actions";
 import { clickedDateParts, toLocalParts } from "../lib/datetime";
-import type { EventDto } from "../lib/event-service";
+import type { EventDto } from "../lib/event-dto";
 import {
   isNarrowing,
   UNFILTERED,
@@ -31,6 +31,7 @@ import type { CalendarMode } from "../lib/view-state";
 import { useEventDialogs } from "./EventDialogs";
 import { presentationOf } from "./importance";
 import { CalendarGridSkeleton } from "./skeletons";
+import { useLatestRequest } from "./use-latest-request";
 import "@fullcalendar/react/skeleton.css";
 import "@fullcalendar/react/themes/classic/theme.css";
 import "@fullcalendar/react/themes/classic/palette.css";
@@ -99,7 +100,7 @@ export function EventCalendar({
   }, []);
   const calendarRef = useRef<CalendarRef>(null);
   // Server Actions run one at a time; only the newest request may win.
-  const latestRequest = useRef(0);
+  const latest = useLatestRequest();
   const [loadFailed, setLoadFailed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadedCount, setLoadedCount] = useState<number | null>(null);
@@ -131,25 +132,25 @@ export function EventCalendar({
   // Must keep a stable identity, or FullCalendar refetches on every render.
   const loadEvents = useCallback(
     async (info: EventSourceFuncInfo): Promise<EventInput[]> => {
-      const request = ++latestRequest.current;
+      const isCurrent = latest.start();
       // FullCalendar may call this during its render; calling a Server Action
       // or setting state there updates the Router mid-render. Defer a tick.
       await new Promise((resolve) => setTimeout(resolve, 0));
-      if (request !== latestRequest.current) return [];
+      if (!isCurrent()) return [];
       setLoading(true);
       const result = await listEventsInRange({
         start: info.startStr,
         end: info.endStr,
         ...(filterRef.current ?? UNFILTERED),
       }).catch(() => null);
-      if (request !== latestRequest.current) return []; // stale response
+      if (!isCurrent()) return []; // stale response
       // Past the await we are no longer in FullCalendar's render phase.
       setLoadFailed(!result?.ok);
       setLoadedCount(result?.ok ? result.data.length : null);
       setLoading(false);
       return result?.ok ? result.data.map(toCalendarEvent) : [];
     },
-    []
+    [latest]
   );
 
   const refresh = () => calendarRef.current?.getApi().refetchEvents();
